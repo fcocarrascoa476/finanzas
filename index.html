@@ -75,24 +75,34 @@
   <main>
     <div class="kpi-grid">
       <div class="kpi-card purple">
-        <div class="kpi-label">Cuotas comprometidas</div>
+        <div class="kpi-label">Cuotas comprometidas a futuro</div>
         <div class="kpi-value" id="kpi-comprometido">&mdash;</div>
         <div class="kpi-sub" id="kpi-n-cuotas">&mdash;</div>
       </div>
       <div class="kpi-card blue">
-        <div class="kpi-label">Pr&oacute;x. cuota mensual TC</div>
-        <div class="kpi-value" id="kpi-cuota-mes">&mdash;</div>
-        <div class="kpi-sub">compromiso estimado pr&oacute;ximo mes</div>
+        <div class="kpi-label">Cuotas a pagar pr&oacute;ximo mes</div>
+        <div class="kpi-value" id="kpi-cuota-prox">&mdash;</div>
+        <div class="kpi-sub">tarjeta de cr&eacute;dito</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Saldo inicial del per&iacute;odo</div>
+        <div class="kpi-value" id="kpi-saldo-ini">&mdash;</div>
+        <div class="kpi-sub">cuenta corriente</div>
       </div>
       <div class="kpi-card green">
-        <div class="kpi-label">Ingresos CC per&iacute;odo</div>
+        <div class="kpi-label">Total ingresos del per&iacute;odo</div>
         <div class="kpi-value" id="kpi-ingresos">&mdash;</div>
-        <div class="kpi-sub" id="kpi-egresos">Egresos: &mdash;</div>
+        <div class="kpi-sub">abonos cuenta corriente</div>
       </div>
-      <div class="kpi-card" id="card-balance">
-        <div class="kpi-label">Balance CC per&iacute;odo</div>
-        <div class="kpi-value" id="kpi-balance">&mdash;</div>
-        <div class="kpi-sub">ingresos menos egresos</div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Total gastos del per&iacute;odo</div>
+        <div class="kpi-value" id="kpi-gastos">&mdash;</div>
+        <div class="kpi-sub">egresos cuenta corriente</div>
+      </div>
+      <div class="kpi-card" id="card-proy">
+        <div class="kpi-label">Saldo proyectado a fin de mes</div>
+        <div class="kpi-value" id="kpi-saldo-proy">&mdash;</div>
+        <div class="kpi-sub">estimado por tendencia</div>
       </div>
     </div>
     <div class="chart-grid">
@@ -155,15 +165,19 @@ async function entrar(frase) {
 
 // ── Render del dashboard ────────────────────────────────────────────
 function render(DATA) {
-  document.getElementById("genDate").textContent       = DATA.generado_en;
+  const clpN = n => (n === null || n === undefined) ? "Sin datos" : clp(n);
+  document.getElementById("genDate").textContent          = DATA.generado_en;
   document.getElementById("kpi-comprometido").textContent = clp(DATA.kpis.total_comprometido);
-  document.getElementById("kpi-n-cuotas").textContent  = `${DATA.kpis.n_activas} activas + ${DATA.kpis.n_nuevas} nuevas`;
-  document.getElementById("kpi-cuota-mes").textContent = clp(DATA.kpis.cuota_mensual_est);
-  document.getElementById("kpi-ingresos").textContent  = clp(DATA.kpis.ingresos_cc);
-  document.getElementById("kpi-egresos").textContent   = "Egresos: " + clp(DATA.kpis.egresos_cc);
-  document.getElementById("kpi-balance").textContent   = clp(DATA.kpis.balance_cc);
-  document.getElementById("card-balance").style.borderTopColor =
-    DATA.kpis.balance_cc >= 0 ? "var(--green)" : "var(--red)";
+  document.getElementById("kpi-n-cuotas").textContent     = `${DATA.kpis.n_activas} activas + ${DATA.kpis.n_nuevas} nuevas`;
+  document.getElementById("kpi-cuota-prox").textContent   = clp(DATA.kpis.cuota_proximo_mes);
+  document.getElementById("kpi-saldo-ini").textContent    = clpN(DATA.kpis.saldo_inicial);
+  document.getElementById("kpi-ingresos").textContent     = clp(DATA.kpis.ingresos_cc);
+  document.getElementById("kpi-gastos").textContent       = clp(DATA.kpis.egresos_cc);
+  document.getElementById("kpi-saldo-proy").textContent   = clpN(DATA.kpis.saldo_proyectado);
+  const proyCard = document.getElementById("card-proy");
+  if (DATA.kpis.saldo_proyectado != null && DATA.kpis.saldo_inicial != null)
+    proyCard.style.borderTopColor =
+      DATA.kpis.saldo_proyectado >= DATA.kpis.saldo_inicial ? "var(--green)" : "var(--red)";
 
   if (DATA.tc_categorias.labels.length > 0) {
     new Chart(document.getElementById("chartTC"), {
