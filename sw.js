@@ -1,4 +1,4 @@
-const CACHE = "finanzas-v1";
+const CACHE = "finanzas-v2";
 const SHELL = ["./index.html", "./chart.min.js", "./manifest.webmanifest",
                "./icono-192.png", "./icono-512.png"];
 
@@ -11,9 +11,11 @@ self.addEventListener("activate", e =>
   ).then(() => self.clients.claim())));
 
 self.addEventListener("fetch", e => {
-  const url = e.request.url;
-  if (url.endsWith("data.enc")) {
-    // Red primero (datos frescos); si no hay internet, cae al ultimo cacheado.
+  const path = new URL(e.request.url).pathname;
+  // index.html y data.enc: RED PRIMERO (siempre lo más fresco cuando hay internet),
+  // con caída al cache si estás sin conexión. Así los cambios de la app llegan solos.
+  const redPrimero = path.endsWith("/") || path.endsWith("index.html") || path.endsWith("data.enc");
+  if (redPrimero) {
     e.respondWith(
       fetch(e.request).then(r => {
         const clone = r.clone();
@@ -22,7 +24,7 @@ self.addEventListener("fetch", e => {
       }).catch(() => caches.match(e.request))
     );
   } else {
-    // Shell: cache primero.
+    // chart.js, iconos, manifest: cache primero (casi nunca cambian).
     e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
   }
 });
