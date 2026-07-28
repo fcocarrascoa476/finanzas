@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1e3a5f">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>Finanzas Familiares</title>
+<script src="./chart.min.js"></script>
+<style>
+  :root {
+    --bg:#f0f4f8; --card:#fff; --navy:#1e3a5f; --blue:#2563eb; --green:#10b981;
+    --red:#ef4444; --amber:#f59e0b; --purple:#7c3aed; --text:#1f2937; --muted:#6b7280;
+    --border:#e5e7eb; --shadow:0 1px 3px rgba(0,0,0,.10),0 1px 2px rgba(0,0,0,.06);
+    --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; }
+  header { background:var(--navy); color:#fff; padding:16px 20px; display:flex; align-items:center;
+           justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  header h1 { font-size:1.15rem; font-weight:600; }
+  header .sub { font-size:.78rem; color:#93c5fd; margin-top:2px; }
+  .badge-gen { font-size:.72rem; background:rgba(255,255,255,.12); padding:4px 12px; border-radius:99px; color:#e0f2fe; }
+  main { max-width:1280px; margin:0 auto; padding:18px 14px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+  .kpi-card { background:var(--card); border-radius:12px; padding:16px; box-shadow:var(--shadow); border-top:4px solid var(--blue); }
+  .kpi-card.green{border-color:var(--green)} .kpi-card.red{border-color:var(--red)}
+  .kpi-card.amber{border-color:var(--amber)} .kpi-card.purple{border-color:var(--purple)}
+  .kpi-label { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-bottom:6px; }
+  .kpi-value { font-size:1.4rem; font-weight:700; color:var(--text); line-height:1.1; }
+  .kpi-sub { font-size:.72rem; color:var(--muted); margin-top:5px; }
+  .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+  @media(max-width:760px){ .chart-grid{ grid-template-columns:1fr; } }
+  .card,.card-full { background:var(--card); border-radius:12px; padding:16px; box-shadow:var(--shadow-md); }
+  .card-full { margin-bottom:20px; }
+  .card-title { font-size:.82rem; font-weight:700; color:var(--navy); text-transform:uppercase; letter-spacing:.3px;
+                border-bottom:2px solid var(--border); padding-bottom:9px; margin-bottom:14px; }
+  .chart-wrap { position:relative; height:260px; } .chart-wrap-sm { position:relative; height:230px; }
+  table { width:100%; border-collapse:collapse; font-size:.8rem; }
+  thead th { background:var(--navy); color:#fff; padding:8px 10px; text-align:left; font-size:.72rem; text-transform:uppercase; }
+  tbody tr:nth-child(even){ background:#f8fafc; } tbody td { padding:7px 10px; border-bottom:1px solid var(--border); }
+  .badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:.68rem; font-weight:600; }
+  .badge-activa{ background:#d1fae5; color:#065f46; } .badge-nueva{ background:#fef3c7; color:#92400e; }
+  .tag-cat { display:inline-block; padding:1px 7px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:.68rem; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  /* Login */
+  #login { max-width:360px; margin:56px auto; padding:26px; background:var(--card); border-radius:14px; box-shadow:var(--shadow-md); }
+  #login h2 { color:var(--navy); font-size:1.3rem; margin-bottom:6px; }
+  #login p { color:var(--muted); margin-bottom:14px; }
+  #login input { width:100%; padding:11px; font-size:16px; border:1px solid #cbd5e1; border-radius:8px; }
+  #login button { width:100%; margin-top:10px; padding:11px; font-size:16px; background:var(--navy); color:#fff; border:0; border-radius:8px; cursor:pointer; }
+  #err { color:var(--red); min-height:20px; margin-top:8px; font-size:.85rem; }
+</style>
+</head>
+<body>
+
+<!-- Pantalla de acceso -->
+<div id="login">
+  <h2>&#128200; Finanzas Familiares</h2>
+  <p>Ingresa tu frase secreta para ver tus datos.</p>
+  <input id="frase" type="password" placeholder="Frase secreta" autocomplete="current-password">
+  <button id="btn">Entrar</button>
+  <p id="err"></p>
+</div>
+
+<!-- Dashboard (oculto hasta descifrar) -->
+<div id="app" style="display:none">
+  <header>
+    <div>
+      <h1>&#128200; Finanzas Familiares</h1>
+      <div class="sub">Francisco Carrasco &mdash; Resumen consolidado</div>
+    </div>
+    <div class="badge-gen">Actualizado: <span id="genDate"></span></div>
+  </header>
+  <main>
+    <div class="kpi-grid">
+      <div class="kpi-card purple">
+        <div class="kpi-label">Cuotas comprometidas</div>
+        <div class="kpi-value" id="kpi-comprometido">&mdash;</div>
+        <div class="kpi-sub" id="kpi-n-cuotas">&mdash;</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Pr&oacute;x. cuota mensual TC</div>
+        <div class="kpi-value" id="kpi-cuota-mes">&mdash;</div>
+        <div class="kpi-sub">compromiso estimado pr&oacute;ximo mes</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Ingresos CC per&iacute;odo</div>
+        <div class="kpi-value" id="kpi-ingresos">&mdash;</div>
+        <div class="kpi-sub" id="kpi-egresos">Egresos: &mdash;</div>
+      </div>
+      <div class="kpi-card" id="card-balance">
+        <div class="kpi-label">Balance CC per&iacute;odo</div>
+        <div class="kpi-value" id="kpi-balance">&mdash;</div>
+        <div class="kpi-sub">ingresos menos egresos</div>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title">Gastos TC por Categor&iacute;a</div>
+        <div class="chart-wrap-sm"><canvas id="chartTC"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Evoluci&oacute;n Mensual Cuenta Corriente</div>
+        <div class="chart-wrap"><canvas id="chartCC"></canvas></div>
+      </div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">Compromisos de Cuotas &mdash; Pr&oacute;ximos 12 Meses</div>
+      <div class="chart-wrap"><canvas id="chartProy"></canvas></div>
+    </div>
+    <div class="card-full">
+      <div class="card-title">Detalle de Cuotas Pendientes</div>
+      <div style="overflow-x:auto">
+        <table id="tablaCuotas">
+          <thead><tr>
+            <th>Comercio</th><th>Categor&iacute;a</th><th>Estado</th><th>Cuota</th><th>Rest.</th>
+            <th style="text-align:right">Cuota/Mes</th><th style="text-align:right">Monto Restante</th><th>Pr&oacute;xima</th>
+          </tr></thead>
+          <tbody id="tablaCuotasBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const ITER = 200000;
+const clp = n => "$" + Math.round(n).toLocaleString("es-CL");
+const COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#7c3aed","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
+
+// ── Descifrado (contrato identico a cripto.py) ──────────────────────
+async function descifrar(b64, frase) {
+  const raw = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
+  const salt = raw.slice(0,16), nonce = raw.slice(16,28), ct = raw.slice(28);
+  const enc = new TextEncoder();
+  const base = await crypto.subtle.importKey("raw", enc.encode(frase), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt, iterations:ITER, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:nonce}, key, ct);
+  return new TextDecoder().decode(pt);
+}
+
+async function entrar(frase) {
+  const resp = await fetch("./data.enc", {cache:"no-store"});
+  if (!resp.ok) throw new Error("sin datos");
+  const blob = await resp.text();
+  const DATA = JSON.parse(await descifrar(blob, frase));   // lanza si la frase es incorrecta
+  localStorage.setItem("frase", frase);
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  render(DATA);
+}
+
+// ── Render del dashboard ────────────────────────────────────────────
+function render(DATA) {
+  document.getElementById("genDate").textContent       = DATA.generado_en;
+  document.getElementById("kpi-comprometido").textContent = clp(DATA.kpis.total_comprometido);
+  document.getElementById("kpi-n-cuotas").textContent  = `${DATA.kpis.n_activas} activas + ${DATA.kpis.n_nuevas} nuevas`;
+  document.getElementById("kpi-cuota-mes").textContent = clp(DATA.kpis.cuota_mensual_est);
+  document.getElementById("kpi-ingresos").textContent  = clp(DATA.kpis.ingresos_cc);
+  document.getElementById("kpi-egresos").textContent   = "Egresos: " + clp(DATA.kpis.egresos_cc);
+  document.getElementById("kpi-balance").textContent   = clp(DATA.kpis.balance_cc);
+  document.getElementById("card-balance").style.borderTopColor =
+    DATA.kpis.balance_cc >= 0 ? "var(--green)" : "var(--red)";
+
+  if (DATA.tc_categorias.labels.length > 0) {
+    new Chart(document.getElementById("chartTC"), {
+      type:"doughnut",
+      data:{ labels:DATA.tc_categorias.labels, datasets:[{ data:DATA.tc_categorias.values,
+        backgroundColor:COLORS.slice(0,DATA.tc_categorias.labels.length), borderWidth:2, borderColor:"#fff", hoverOffset:8 }] },
+      options:{ responsive:true, maintainAspectRatio:false, cutout:"62%",
+        plugins:{ legend:{ position:"right", labels:{ font:{size:11}, padding:10, boxWidth:12 } },
+          tooltip:{ callbacks:{ label:ctx=>` ${ctx.label}: ${clp(ctx.raw)}` } } } }
+    });
+  } else { document.getElementById("chartTC").parentElement.innerHTML =
+    '<p style="color:var(--muted);text-align:center;padding:40px">Sin datos TC.</p>'; }
+
+  if (DATA.cc_mensual.labels.length > 0) {
+    new Chart(document.getElementById("chartCC"), {
+      type:"bar",
+      data:{ labels:DATA.cc_mensual.labels, datasets:[
+        { label:"Ingresos", data:DATA.cc_mensual.abonos, backgroundColor:"rgba(16,185,129,.75)", borderRadius:4 },
+        { label:"Egresos",  data:DATA.cc_mensual.cargos, backgroundColor:"rgba(239,68,68,.72)", borderRadius:4 } ] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:"top", labels:{ font:{size:11} } },
+          tooltip:{ callbacks:{ label:ctx=>` ${ctx.dataset.label}: ${clp(ctx.raw)}` } } },
+        scales:{ x:{ grid:{display:false} }, y:{ ticks:{ callback:v=>"$"+(v/1e6>=1?(v/1e6).toFixed(1)+"M":v/1e3>=1?(v/1e3).toFixed(0)+"K":v) } } } }
+    });
+  } else { document.getElementById("chartCC").parentElement.innerHTML =
+    '<p style="color:var(--muted);text-align:center;padding:40px">Sin datos CC.</p>'; }
+
+  if (DATA.proyeccion.labels.length > 0) {
+    const pMax = Math.max(...DATA.proyeccion.totales);
+    new Chart(document.getElementById("chartProy"), {
+      type:"bar",
+      data:{ labels:DATA.proyeccion.labels, datasets:[{ label:"Cuotas a pagar", data:DATA.proyeccion.totales,
+        backgroundColor:DATA.proyeccion.totales.map(v=>v===pMax?"rgba(124,58,237,.85)":"rgba(37,99,235,.70)"), borderRadius:5 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>` Cuotas: ${clp(ctx.raw)}` } } },
+        scales:{ x:{ grid:{display:false} }, y:{ ticks:{ callback:v=>"$"+(v/1e6>=1?(v/1e6).toFixed(1)+"M":v/1e3>=1?(v/1e3).toFixed(0)+"K":v) } } } }
+    });
+  } else { document.getElementById("chartProy").parentElement.innerHTML =
+    '<p style="color:var(--muted);text-align:center;padding:40px">Sin proyecci&oacute;n.</p>'; }
+
+  const tbody = document.getElementById("tablaCuotasBody");
+  tbody.innerHTML = "";
+  if (DATA.cuotas_tabla.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sin cuotas pendientes.</td></tr>';
+  } else {
+    DATA.cuotas_tabla.forEach(r => {
+      const esNueva = r.estado.includes("Nueva");
+      const badge = esNueva ? '<span class="badge badge-nueva">&#9733; Nueva</span>' : '<span class="badge badge-activa">Activa</span>';
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td style="font-weight:600">${r.comercio}</td>
+        <td><span class="tag-cat">${r.categoria}</span></td><td>${badge}</td>
+        <td style="text-align:center">${r.cuota}</td><td style="text-align:center">${r.restantes}</td>
+        <td class="num">${clp(r.valor_mes)}</td>
+        <td class="num" style="font-weight:600;color:var(--navy)">${clp(r.restante)}</td><td>${r.proxima}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+}
+
+// ── Arranque ────────────────────────────────────────────────────────
+document.getElementById("btn").onclick = () =>
+  entrar(document.getElementById("frase").value).catch(() =>
+    document.getElementById("err").textContent = "Frase incorrecta o sin conexión.");
+document.getElementById("frase").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("btn").click(); });
+
+window.addEventListener("load", () => {
+  const f = localStorage.getItem("frase");
+  if (f) entrar(f).catch(() => {});   // auto-entra si ya guardaste la frase
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
+});
+</script>
+</body>
+</html>
