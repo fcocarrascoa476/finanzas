@@ -135,6 +135,10 @@
 
     <div class="filtros">
       <div class="fgrupo">
+        <span class="lbl">Mes</span>
+        <div class="fchips" id="rt-chips-mes"></div>
+      </div>
+      <div class="fgrupo">
         <span class="lbl">Origen de Trx</span>
         <div class="fchips">
           <button class="chip on" data-f="rt-origen" data-v="todos">Todos</button>
@@ -171,6 +175,11 @@
     <div class="card-full">
       <div class="card-title">Tendencia mensual por origen <span id="rt-tend-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
       <div class="chart-wrap"><canvas id="chRtTendencia"></canvas></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Evolución por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· top 6 + otros</span></div>
+      <div class="chart-wrap"><canvas id="chRtCatMes"></canvas></div>
     </div>
 
     <div class="card-full">
@@ -226,6 +235,10 @@
 
     <div class="filtros">
       <div class="fgrupo">
+        <span class="lbl">Mes</span>
+        <div class="fchips" id="of-chips-mes"></div>
+      </div>
+      <div class="fgrupo">
         <span class="lbl">Tipo</span>
         <div class="fchips">
           <button class="chip on" data-f="of-tipo" data-v="todos">Todos</button>
@@ -248,6 +261,11 @@
         <div class="card-title">Gastos TC por categoría</div>
         <div class="chart-wrap-sm"><canvas id="chOfCat"></canvas></div>
       </div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Evolución por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· top 6 + otros (tarjeta)</span></div>
+      <div class="chart-wrap"><canvas id="chOfCatMes"></canvas></div>
     </div>
 
     <div class="card-full">
@@ -282,9 +300,46 @@ const clpN = n => (n === null || n === undefined) ? "Sin datos" : clp(n);
 const COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#7c3aed","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
 let DATA = null;
 const charts = {};
-const filtros = { "rt-origen":"todos", "rt-tipo":"todos", "rt-tarjeta":"todas",
-                  "of-tipo":"todos", "of-tarjeta":"todas" };
+const filtros = { "rt-mes":"", "rt-origen":"todos", "rt-tipo":"todos", "rt-tarjeta":"todas",
+                  "of-mes":"todos", "of-tipo":"todos", "of-tarjeta":"todas" };
 const COL_MEDIO = { Credito:"#2563eb", Debito:"#0891b2", Transferencia:"#f59e0b" };
+const NOM_MEDIO = { Credito:"Crédito", Debito:"Débito", Transferencia:"Transferencias" };
+const MES_ABR = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const mesLabel = k => MES_ABR[parseInt(k.slice(5,7),10) - 1] + " " + k.slice(2,4);
+
+// Series apiladas por mes. `clave(m)` define la serie; con topN el resto se
+// agrupa en "Otros". Devuelve datasets listos para Chart.js.
+function apilarPorMes(rows, meses, clave, topN, colores) {
+  const tot = {};
+  rows.forEach(m => { const k = clave(m); tot[k] = (tot[k] || 0) + m.monto; });
+  let series = Object.keys(tot).sort((a,b) => tot[b] - tot[a]);
+  let resto = [];
+  if (topN && series.length > topN) { resto = series.slice(topN); series = series.slice(0, topN); }
+  const conOtros = resto.length ? series.concat(["Otros"]) : series;
+  const agg = {};
+  rows.forEach(m => {
+    const k = series.includes(clave(m)) ? clave(m) : "Otros";
+    agg[m.mes + "|" + k] = (agg[m.mes + "|" + k] || 0) + m.monto;
+  });
+  return conOtros.map((k, i) => ({
+    label: k,
+    data: meses.map(mm => agg[mm + "|" + k] || 0),
+    backgroundColor: (colores && colores[k]) || COLORS[i % COLORS.length],
+    borderRadius: 3
+  }));
+}
+
+function chartApilado(id, labels, datasets) {
+  chart(id, {
+    type:"bar",
+    data:{ labels, datasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:"top", labels:{font:{size:11}, boxWidth:12}},
+        tooltip:{ callbacks:{ label:c => " " + c.dataset.label + ": " + clp(c.raw),
+          footer:it => "Total: " + clp(it.reduce((a,x) => a + x.raw, 0)) } } },
+      scales:{ x:{ stacked:true, grid:{display:false} }, y:Object.assign({stacked:true}, ejeY) } }
+  });
+}
 
 function chart(id, cfg) {
   if (charts[id]) charts[id].destroy();
@@ -310,26 +365,38 @@ async function entrar(frase) {
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "block";
   document.getElementById("genDate").textContent = DATA.generado_en;
-  initTarjetas(); renderRT(); renderOF();
+  initFiltros(); renderRT(); renderOF();
 }
 
 // ── Filtros ────────────────────────────────────────────────────────
-function initTarjetas() {
-  const mk = (cont, fkey, lista) => {
-    const el = document.getElementById(cont);
-    el.innerHTML = "";
-    const add = (v, txt) => {
-      const b = document.createElement("button");
-      b.className = "chip" + (v === "todas" ? " on" : "");
-      b.dataset.f = fkey; b.dataset.v = v; b.textContent = txt;
-      el.appendChild(b);
-    };
-    add("todas", "Todas");
-    lista.forEach(t => add(t, "••" + t));
-  };
-  const rtT = Object.keys((DATA.on_time && DATA.on_time.tarjetas) || {});
-  mk("rt-chips-tarjeta", "rt-tarjeta", rtT);
-  mk("of-chips-tarjeta", "of-tarjeta", (DATA.oficial_extra && DATA.oficial_extra.tarjetas) || []);
+function chips(cont, fkey, items, activo) {
+  const el = document.getElementById(cont);
+  el.innerHTML = "";
+  items.forEach(it => {
+    const b = document.createElement("button");
+    b.className = "chip" + (it.v === activo ? " on" : "");
+    b.dataset.f = fkey; b.dataset.v = it.v; b.textContent = it.label;
+    el.appendChild(b);
+  });
+  filtros[fkey] = activo;
+}
+
+function initFiltros() {
+  const o = DATA.on_time || {}, ex = DATA.oficial_extra || {};
+  // Tarjetas
+  const tarj = (fkey, cont, lista) =>
+    chips(cont, fkey, [{v:"todas", label:"Todas"}].concat(
+      lista.map(t => ({v:t, label:"••" + t}))), "todas");
+  tarj("rt-tarjeta", "rt-chips-tarjeta", Object.keys(o.tarjetas || {}));
+  tarj("of-tarjeta", "of-chips-tarjeta", ex.tarjetas || []);
+  // Meses: el mes en curso por defecto en la vista on-time, todos en la oficial
+  const mesesRT = (o.meses || []);
+  chips("rt-chips-mes", "rt-mes",
+        mesesRT.map(m => ({v:m.v, label:m.label})).concat([{v:"todos", label:"6 meses"}]),
+        (mesesRT.find(m => m.actual) || mesesRT[0] || {v:"todos"}).v);
+  chips("of-chips-mes", "of-mes",
+        [{v:"todos", label:"Todos"}].concat((ex.meses || []).map(m => ({v:m.v, label:m.label}))),
+        "todos");
 }
 
 document.addEventListener("click", e => {
@@ -350,33 +417,40 @@ function renderRT() {
       '<tr><td colspan="7" class="vacio">Aún no hay notificaciones procesadas.</td></tr>';
     return;
   }
-  const tipo = filtros["rt-tipo"], tar = filtros["rt-tarjeta"], org = filtros["rt-origen"];
-  const movs = (o.feed || []).filter(m => {
+  const tipo = filtros["rt-tipo"], tar = filtros["rt-tarjeta"],
+        org = filtros["rt-origen"], mes = filtros["rt-mes"];
+  const meses = (o.meses || []).map(m => m.v).sort();     // ascendente, para los ejes
+  // hist = todo lo filtrado MENOS el mes (los evolutivos siempre muestran 6 meses)
+  const hist = (o.feed || []).filter(m => {
     if (!m.gasto) return false;
-    if (m.mes !== o.mes_actual) return false;          // solo el mes en curso
+    if (meses.indexOf(m.mes) < 0) return false;
     if (org !== "todos" && m.medio !== org) return false;
     if (tar !== "todas" && m.tarjeta !== tar) return false;
     if (tipo === "contado" && !(m.medio === "Credito" && m.cuotas === 0)) return false;
     if (tipo === "cuotas"  && !(m.medio === "Credito" && m.cuotas > 0))  return false;
     return true;
   });
+  const movs = mes === "todos" ? hist : hist.filter(m => m.mes === mes);
 
-  // KPIs: si no hay filtro se usan los totales del mes; con filtro, lo filtrado
-  const sinFiltro = (tipo === "todos" && tar === "todas" && org === "todos");
-  const total = sinFiltro ? o.gasto_mes : movs.reduce((a,m) => a + m.monto, 0);
+  const esActual = mes === o.mes_actual;
+  const total = movs.reduce((a,m) => a + m.monto, 0);
   document.getElementById("rt-gasto").textContent = clp(total);
+  const filtrado = (tipo !== "todos" || tar !== "todas" || org !== "todos") ? " (filtrado)" : "";
   document.getElementById("rt-gasto-sub").textContent =
-    o.mes_label + " · día " + o.dia + " de " + o.dias_mes + (sinFiltro ? "" : " (filtrado)");
+    (mes === "todos" ? "últimos " + meses.length + " meses"
+     : esActual ? o.mes_label + " · día " + o.dia + " de " + o.dias_mes
+     : "mes cerrado " + (o.meses.find(x => x.v === mes) || {}).label) + filtrado;
 
   const cardT = document.getElementById("rt-card-tend");
-  if (o.esperado) {
+  if (esActual && o.esperado) {
     const dif = o.gasto_mes - o.esperado;
     document.getElementById("rt-tend").textContent = (dif >= 0 ? "+" : "−") + clp(Math.abs(dif)).slice(1);
     document.getElementById("rt-tend-sub").textContent = "esperado a hoy: " + clp(o.esperado);
     cardT.style.borderTopColor = dif > 0 ? "var(--red)" : "var(--green)";
   } else {
     document.getElementById("rt-tend").textContent = "—";
-    document.getElementById("rt-tend-sub").textContent = "necesita un mes completo de historial";
+    document.getElementById("rt-tend-sub").textContent = esActual
+      ? "necesita un mes completo de historial" : "solo aplica al mes en curso";
     cardT.style.borderTopColor = "var(--muted)";
   }
 
@@ -409,23 +483,15 @@ function renderRT() {
       scales:{ x:ejeY, y:{ ticks:{font:{size:10}} } } }
   });
 
-  // Tendencia mensual apilada por origen (histórico completo, no depende de filtros)
-  const tm = o.tendencia_medio || {labels:[], series:{}};
+  // Evolutivos: siempre los 6 meses (respetan los otros filtros, no el de mes)
+  const etiquetas = meses.map(mesLabel);
   document.getElementById("rt-tend-nota").textContent =
-    tm.labels.length ? (tm.parcial ? "· el último mes va en curso" : "") : "";
-  if (tm.labels.length) {
-    chart("chRtTendencia", {
-      type:"bar",
-      data:{ labels:tm.labels, datasets:["Credito","Debito","Transferencia"].map(md => ({
-        label: md === "Credito" ? "Crédito" : md === "Debito" ? "Débito" : "Transferencias",
-        data: tm.series[md] || [], backgroundColor: COL_MEDIO[md], borderRadius:3 })) },
-      options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{position:"top"},
-          tooltip:{ callbacks:{ label:c => " " + c.dataset.label + ": " + clp(c.raw),
-            footer:it => "Total: " + clp(it.reduce((a,x) => a + x.raw, 0)) } } },
-        scales:{ x:{ stacked:true, grid:{display:false} }, y:Object.assign({stacked:true}, ejeY) } }
-    });
-  }
+    meses[meses.length-1] === o.mes_actual ? "· el último mes va en curso" : "";
+  chartApilado("chRtTendencia", etiquetas,
+    apilarPorMes(hist, meses, m => m.medio || "Otro", 0, COL_MEDIO)
+      .map(d => Object.assign(d, {label: NOM_MEDIO[d.label] || d.label})));
+  chartApilado("chRtCatMes", etiquetas,
+    apilarPorMes(hist, meses, m => m.cat || "Otros", 6));
 
   const tb = document.getElementById("rt-feed");
   document.getElementById("rt-n").textContent = "(" + movs.length + ")";
@@ -461,13 +527,15 @@ function renderOF() {
     document.getElementById("card-proy").style.borderTopColor =
       k.saldo_proyectado >= k.saldo_inicial ? "var(--green)" : "var(--red)";
 
-  const tipo = filtros["of-tipo"], tar = filtros["of-tarjeta"];
-  const movs = (ex.movs || []).filter(m => {
+  const tipo = filtros["of-tipo"], tar = filtros["of-tarjeta"], mes = filtros["of-mes"];
+  const meses = (ex.meses || []).map(m => m.v).sort();
+  const hist = (ex.movs || []).filter(m => {
     if (tar !== "todas" && m.tarjeta !== tar) return false;
     if (tipo === "contado" && m.tipo !== "Contado") return false;
     if (tipo === "cuotas"  && m.tipo !== "Cuotas")  return false;
     return true;
   });
+  const movs = mes === "todos" ? hist : hist.filter(m => m.mes === mes);
   let cont = 0, cuo = 0, agg = {};
   movs.forEach(m => {
     if (m.tipo === "Cuotas") cuo += m.monto; else cont += m.monto;
@@ -492,6 +560,9 @@ function renderOF() {
       plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c => " " + clp(c.raw) } } },
       scales:{ x:ejeY, y:{ ticks:{font:{size:10}} } } }
   });
+
+  chartApilado("chOfCatMes", meses.map(mesLabel),
+    apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses, m => m.cat || "Otros", 6));
 
   if (DATA.cc_mensual.labels.length) {
     chart("chartCC", {
