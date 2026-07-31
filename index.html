@@ -99,7 +99,7 @@
 <div id="app" style="display:none">
   <header>
     <h1>&#128200; Finanzas Familiares</h1>
-    <div class="sub">Francisco Carrasco &mdash; actualizado <span id="genDate"></span></div>
+    <div class="sub"><span id="titular"></span>actualizado <span id="genDate"></span></div>
   </header>
   <div class="tabs">
     <button class="tab on" id="tab-rt">Mes en curso</button>
@@ -365,6 +365,7 @@ async function entrar(frase) {
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "block";
   document.getElementById("genDate").textContent = DATA.generado_en;
+  document.getElementById("titular").textContent = DATA.titular ? DATA.titular + " — " : "";
   initFiltros(); renderRT(); renderOF();
 }
 
