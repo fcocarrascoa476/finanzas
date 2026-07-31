@@ -41,14 +41,23 @@
   .kpi-value { font-size:1.35rem; font-weight:700; line-height:1.1; }
   .kpi-sub { font-size:.71rem; color:var(--muted); margin-top:5px; }
 
-  /* Filtros */
-  .filtros { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:14px;
-             background:var(--card); padding:10px; border-radius:10px; box-shadow:var(--shadow); }
-  .filtros .lbl { font-size:.7rem; font-weight:700; color:var(--muted); text-transform:uppercase; margin-right:2px; }
+  /* Filtros: cada grupo en su propio bloque, claramente separado del siguiente */
+  .filtros { display:flex; flex-wrap:wrap; gap:10px 26px; align-items:flex-start; margin-bottom:14px;
+             background:var(--card); padding:12px; border-radius:10px; box-shadow:var(--shadow); }
+  .fgrupo { display:flex; flex-direction:column; gap:6px; padding-right:26px;
+            border-right:1px solid var(--border); }
+  .fgrupo:last-child { border-right:0; padding-right:0; }
+  .fchips { display:flex; flex-wrap:wrap; gap:6px; }
+  .filtros .lbl { font-size:.68rem; font-weight:700; color:var(--navy); text-transform:uppercase;
+                  letter-spacing:.6px; }
   .chip { padding:6px 12px; border-radius:99px; border:1px solid var(--border); background:#fff;
           font-size:.78rem; cursor:pointer; color:var(--text); }
   .chip.on { background:var(--navy); color:#fff; border-color:var(--navy); font-weight:600; }
-  .sep { width:1px; height:20px; background:var(--border); margin:0 4px; }
+  @media(max-width:760px){
+    .fgrupo { border-right:0; padding-right:0; width:100%; padding-bottom:10px;
+              border-bottom:1px solid var(--border); }
+    .fgrupo:last-child { border-bottom:0; padding-bottom:0; }
+  }
 
   .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
   @media(max-width:760px){ .chart-grid{ grid-template-columns:1fr; } }
@@ -125,13 +134,27 @@
     </div>
 
     <div class="filtros">
-      <span class="lbl">Tipo</span>
-      <button class="chip on" data-f="rt-tipo" data-v="todos">Todos</button>
-      <button class="chip" data-f="rt-tipo" data-v="contado">Contado</button>
-      <button class="chip" data-f="rt-tipo" data-v="cuotas">En cuotas</button>
-      <span class="sep"></span>
-      <span class="lbl">Tarjeta</span>
-      <span id="rt-chips-tarjeta"></span>
+      <div class="fgrupo">
+        <span class="lbl">Origen de Trx</span>
+        <div class="fchips">
+          <button class="chip on" data-f="rt-origen" data-v="todos">Todos</button>
+          <button class="chip" data-f="rt-origen" data-v="Credito">Crédito</button>
+          <button class="chip" data-f="rt-origen" data-v="Debito">Débito</button>
+          <button class="chip" data-f="rt-origen" data-v="Transferencia">Transferencia</button>
+        </div>
+      </div>
+      <div class="fgrupo">
+        <span class="lbl">Tipo</span>
+        <div class="fchips">
+          <button class="chip on" data-f="rt-tipo" data-v="todos">Todos</button>
+          <button class="chip" data-f="rt-tipo" data-v="contado">Contado</button>
+          <button class="chip" data-f="rt-tipo" data-v="cuotas">En cuotas</button>
+        </div>
+      </div>
+      <div class="fgrupo">
+        <span class="lbl">Tarjeta</span>
+        <div class="fchips" id="rt-chips-tarjeta"></div>
+      </div>
     </div>
 
     <div class="chart-grid">
@@ -143,6 +166,11 @@
         <div class="card-title">Gasto por categoría del mes</div>
         <div class="chart-wrap-sm"><canvas id="chRtCat"></canvas></div>
       </div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Tendencia mensual por origen <span id="rt-tend-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
+      <div class="chart-wrap"><canvas id="chRtTendencia"></canvas></div>
     </div>
 
     <div class="card-full">
@@ -197,13 +225,18 @@
     </div>
 
     <div class="filtros">
-      <span class="lbl">Tipo</span>
-      <button class="chip on" data-f="of-tipo" data-v="todos">Todos</button>
-      <button class="chip" data-f="of-tipo" data-v="contado">Contado</button>
-      <button class="chip" data-f="of-tipo" data-v="cuotas">En cuotas</button>
-      <span class="sep"></span>
-      <span class="lbl">Tarjeta</span>
-      <span id="of-chips-tarjeta"></span>
+      <div class="fgrupo">
+        <span class="lbl">Tipo</span>
+        <div class="fchips">
+          <button class="chip on" data-f="of-tipo" data-v="todos">Todos</button>
+          <button class="chip" data-f="of-tipo" data-v="contado">Contado</button>
+          <button class="chip" data-f="of-tipo" data-v="cuotas">En cuotas</button>
+        </div>
+      </div>
+      <div class="fgrupo">
+        <span class="lbl">Tarjeta</span>
+        <div class="fchips" id="of-chips-tarjeta"></div>
+      </div>
     </div>
 
     <div class="chart-grid">
@@ -249,7 +282,9 @@ const clpN = n => (n === null || n === undefined) ? "Sin datos" : clp(n);
 const COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#7c3aed","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
 let DATA = null;
 const charts = {};
-const filtros = { "rt-tipo":"todos", "rt-tarjeta":"todas", "of-tipo":"todos", "of-tarjeta":"todas" };
+const filtros = { "rt-origen":"todos", "rt-tipo":"todos", "rt-tarjeta":"todas",
+                  "of-tipo":"todos", "of-tarjeta":"todas" };
+const COL_MEDIO = { Credito:"#2563eb", Debito:"#0891b2", Transferencia:"#f59e0b" };
 
 function chart(id, cfg) {
   if (charts[id]) charts[id].destroy();
@@ -315,10 +350,11 @@ function renderRT() {
       '<tr><td colspan="7" class="vacio">Aún no hay notificaciones procesadas.</td></tr>';
     return;
   }
-  const tipo = filtros["rt-tipo"], tar = filtros["rt-tarjeta"];
+  const tipo = filtros["rt-tipo"], tar = filtros["rt-tarjeta"], org = filtros["rt-origen"];
   const movs = (o.feed || []).filter(m => {
     if (!m.gasto) return false;
     if (m.mes !== o.mes_actual) return false;          // solo el mes en curso
+    if (org !== "todos" && m.medio !== org) return false;
     if (tar !== "todas" && m.tarjeta !== tar) return false;
     if (tipo === "contado" && !(m.medio === "Credito" && m.cuotas === 0)) return false;
     if (tipo === "cuotas"  && !(m.medio === "Credito" && m.cuotas > 0))  return false;
@@ -326,7 +362,7 @@ function renderRT() {
   });
 
   // KPIs: si no hay filtro se usan los totales del mes; con filtro, lo filtrado
-  const sinFiltro = (tipo === "todos" && tar === "todas");
+  const sinFiltro = (tipo === "todos" && tar === "todas" && org === "todos");
   const total = sinFiltro ? o.gasto_mes : movs.reduce((a,m) => a + m.monto, 0);
   document.getElementById("rt-gasto").textContent = clp(total);
   document.getElementById("rt-gasto-sub").textContent =
@@ -344,7 +380,10 @@ function renderRT() {
     cardT.style.borderTopColor = "var(--muted)";
   }
 
-  const cc = o.contado_cuotas || {contado:0, cuotas:0};
+  // Contado/cuotas recalculado sobre lo filtrado (solo aplica a crédito)
+  const cc = {contado:0, cuotas:0};
+  movs.forEach(m => { if (m.medio === "Credito") {
+    if (m.cuotas > 0) cc.cuotas += m.monto; else cc.contado += m.monto; } });
   document.getElementById("rt-contado").textContent = clp(cc.contado);
   document.getElementById("rt-cuotas").textContent  = clp(cc.cuotas);
 
@@ -369,6 +408,24 @@ function renderRT() {
       plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c => " " + clp(c.raw) } } },
       scales:{ x:ejeY, y:{ ticks:{font:{size:10}} } } }
   });
+
+  // Tendencia mensual apilada por origen (histórico completo, no depende de filtros)
+  const tm = o.tendencia_medio || {labels:[], series:{}};
+  document.getElementById("rt-tend-nota").textContent =
+    tm.labels.length ? (tm.parcial ? "· el último mes va en curso" : "") : "";
+  if (tm.labels.length) {
+    chart("chRtTendencia", {
+      type:"bar",
+      data:{ labels:tm.labels, datasets:["Credito","Debito","Transferencia"].map(md => ({
+        label: md === "Credito" ? "Crédito" : md === "Debito" ? "Débito" : "Transferencias",
+        data: tm.series[md] || [], backgroundColor: COL_MEDIO[md], borderRadius:3 })) },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{position:"top"},
+          tooltip:{ callbacks:{ label:c => " " + c.dataset.label + ": " + clp(c.raw),
+            footer:it => "Total: " + clp(it.reduce((a,x) => a + x.raw, 0)) } } },
+        scales:{ x:{ stacked:true, grid:{display:false} }, y:Object.assign({stacked:true}, ejeY) } }
+    });
+  }
 
   const tb = document.getElementById("rt-feed");
   document.getElementById("rt-n").textContent = "(" + movs.length + ")";
