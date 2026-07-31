@@ -357,16 +357,23 @@ async function descifrar(b64, frase) {
   return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM", iv:nonce}, key, ct));
 }
 
-async function entrar(frase) {
-  const resp = await fetch("./data.enc", {cache:"no-store"});
-  if (!resp.ok) throw new Error("sin datos");
-  DATA = JSON.parse(await descifrar(await resp.text(), frase));
-  localStorage.setItem("frase", frase);
+// Pinta el dashboard con los datos ya en claro (vienen del data.enc descifrado
+// o embebidos, cuando este mismo archivo se genera como copia local en el PC).
+function mostrar(datos) {
+  DATA = datos;
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "block";
   document.getElementById("genDate").textContent = DATA.generado_en;
   document.getElementById("titular").textContent = DATA.titular ? DATA.titular + " — " : "";
   initFiltros(); renderRT(); renderOF();
+}
+
+async function entrar(frase) {
+  const resp = await fetch("./data.enc", {cache:"no-store"});
+  if (!resp.ok) throw new Error("sin datos");
+  const datos = JSON.parse(await descifrar(await resp.text(), frase));
+  localStorage.setItem("frase", frase);
+  mostrar(datos);
 }
 
 // ── Filtros ────────────────────────────────────────────────────────
@@ -630,6 +637,8 @@ document.getElementById("btn").onclick = () =>
     document.getElementById("err").textContent = "Frase incorrecta o sin conexión.");
 document.getElementById("frase").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("btn").click(); });
 window.addEventListener("load", () => {
+  // Copia local generada en el PC: los datos vienen embebidos, no hay que pedir frase
+  if (window.__DATOS__) { mostrar(window.__DATOS__); return; }
   const f = localStorage.getItem("frase");
   if (f) entrar(f).catch(() => {});
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
