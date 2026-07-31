@@ -10,40 +10,65 @@
 <style>
   :root {
     --bg:#f0f4f8; --card:#fff; --navy:#1e3a5f; --blue:#2563eb; --green:#10b981;
-    --red:#ef4444; --amber:#f59e0b; --purple:#7c3aed; --text:#1f2937; --muted:#6b7280;
-    --border:#e5e7eb; --shadow:0 1px 3px rgba(0,0,0,.10),0 1px 2px rgba(0,0,0,.06);
+    --red:#ef4444; --amber:#f59e0b; --purple:#7c3aed; --teal:#0891b2; --text:#1f2937;
+    --muted:#6b7280; --border:#e5e7eb; --shadow:0 1px 3px rgba(0,0,0,.10),0 1px 2px rgba(0,0,0,.06);
     --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; }
-  header { background:var(--navy); color:#fff; padding:16px 20px; display:flex; align-items:center;
-           justify-content:space-between; flex-wrap:wrap; gap:8px; }
-  header h1 { font-size:1.15rem; font-weight:600; }
-  header .sub { font-size:.78rem; color:#93c5fd; margin-top:2px; }
-  .badge-gen { font-size:.72rem; background:rgba(255,255,255,.12); padding:4px 12px; border-radius:99px; color:#e0f2fe; }
-  main { max-width:1280px; margin:0 auto; padding:18px 14px; }
-  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
-  .kpi-card { background:var(--card); border-radius:12px; padding:16px; box-shadow:var(--shadow); border-top:4px solid var(--blue); }
+  header { background:var(--navy); color:#fff; padding:14px 18px; }
+  header h1 { font-size:1.1rem; font-weight:600; }
+  header .sub { font-size:.75rem; color:#93c5fd; margin-top:2px; }
+
+  /* Tabs */
+  .tabs { display:flex; background:var(--navy); padding:0 10px; gap:4px; }
+  .tab { flex:1; padding:11px 8px; text-align:center; font-size:.82rem; font-weight:600;
+         color:#93c5fd; background:transparent; border:0; cursor:pointer;
+         border-bottom:3px solid transparent; }
+  .tab.on { color:#fff; border-bottom-color:var(--amber); }
+
+  main { max-width:1280px; margin:0 auto; padding:16px 12px; }
+  .aviso { font-size:.72rem; color:var(--muted); background:#fffbeb; border-left:3px solid var(--amber);
+           padding:7px 10px; border-radius:5px; margin-bottom:14px; }
+  .aviso.ofi { background:#eff6ff; border-left-color:var(--blue); }
+
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:11px; margin-bottom:16px; }
+  .kpi-card { background:var(--card); border-radius:12px; padding:14px; box-shadow:var(--shadow); border-top:4px solid var(--blue); }
   .kpi-card.green{border-color:var(--green)} .kpi-card.red{border-color:var(--red)}
   .kpi-card.amber{border-color:var(--amber)} .kpi-card.purple{border-color:var(--purple)}
-  .kpi-label { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-bottom:6px; }
-  .kpi-value { font-size:1.4rem; font-weight:700; color:var(--text); line-height:1.1; }
-  .kpi-sub { font-size:.72rem; color:var(--muted); margin-top:5px; }
-  .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+  .kpi-card.teal{border-color:var(--teal)}
+  .kpi-label { font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-bottom:5px; }
+  .kpi-value { font-size:1.35rem; font-weight:700; line-height:1.1; }
+  .kpi-sub { font-size:.71rem; color:var(--muted); margin-top:5px; }
+
+  /* Filtros */
+  .filtros { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:14px;
+             background:var(--card); padding:10px; border-radius:10px; box-shadow:var(--shadow); }
+  .filtros .lbl { font-size:.7rem; font-weight:700; color:var(--muted); text-transform:uppercase; margin-right:2px; }
+  .chip { padding:6px 12px; border-radius:99px; border:1px solid var(--border); background:#fff;
+          font-size:.78rem; cursor:pointer; color:var(--text); }
+  .chip.on { background:var(--navy); color:#fff; border-color:var(--navy); font-weight:600; }
+  .sep { width:1px; height:20px; background:var(--border); margin:0 4px; }
+
+  .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
   @media(max-width:760px){ .chart-grid{ grid-template-columns:1fr; } }
-  .card,.card-full { background:var(--card); border-radius:12px; padding:16px; box-shadow:var(--shadow-md); }
-  .card-full { margin-bottom:20px; }
-  .card-title { font-size:.82rem; font-weight:700; color:var(--navy); text-transform:uppercase; letter-spacing:.3px;
-                border-bottom:2px solid var(--border); padding-bottom:9px; margin-bottom:14px; }
-  .chart-wrap { position:relative; height:260px; } .chart-wrap-sm { position:relative; height:230px; }
-  table { width:100%; border-collapse:collapse; font-size:.8rem; }
-  thead th { background:var(--navy); color:#fff; padding:8px 10px; text-align:left; font-size:.72rem; text-transform:uppercase; }
-  tbody tr:nth-child(even){ background:#f8fafc; } tbody td { padding:7px 10px; border-bottom:1px solid var(--border); }
-  .badge { display:inline-block; padding:2px 8px; border-radius:99px; font-size:.68rem; font-weight:600; }
-  .badge-activa{ background:#d1fae5; color:#065f46; } .badge-nueva{ background:#fef3c7; color:#92400e; }
-  .tag-cat { display:inline-block; padding:1px 7px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:.68rem; }
+  .card,.card-full { background:var(--card); border-radius:12px; padding:15px; box-shadow:var(--shadow-md); }
+  .card-full { margin-bottom:16px; }
+  .card-title { font-size:.8rem; font-weight:700; color:var(--navy); text-transform:uppercase;
+                border-bottom:2px solid var(--border); padding-bottom:8px; margin-bottom:12px; }
+  .chart-wrap { position:relative; height:250px; } .chart-wrap-sm { position:relative; height:225px; }
+
+  table { width:100%; border-collapse:collapse; font-size:.79rem; }
+  thead th { background:var(--navy); color:#fff; padding:8px 9px; text-align:left; font-size:.7rem; text-transform:uppercase; }
+  tbody tr:nth-child(even){ background:#f8fafc; }
+  tbody td { padding:7px 9px; border-bottom:1px solid var(--border); }
+  .badge { display:inline-block; padding:2px 7px; border-radius:99px; font-size:.66rem; font-weight:600; }
+  .b-cuotas{ background:#ede9fe; color:#5b21b6; } .b-contado{ background:#d1fae5; color:#065f46; }
+  .b-nueva{ background:#fef3c7; color:#92400e; } .b-activa{ background:#d1fae5; color:#065f46; }
+  .tag-cat { display:inline-block; padding:1px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:.67rem; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
-  /* Login */
+  .vacio { color:var(--muted); text-align:center; padding:26px; font-size:.85rem; }
+
   #login { max-width:360px; margin:56px auto; padding:26px; background:var(--card); border-radius:14px; box-shadow:var(--shadow-md); }
   #login h2 { color:var(--navy); font-size:1.3rem; margin-bottom:6px; }
   #login p { color:var(--muted); margin-bottom:14px; }
@@ -54,7 +79,6 @@
 </head>
 <body>
 
-<!-- Pantalla de acceso -->
 <div id="login">
   <h2>&#128200; Finanzas Familiares</h2>
   <p>Ingresa tu frase secreta para ver tus datos.</p>
@@ -63,16 +87,82 @@
   <p id="err"></p>
 </div>
 
-<!-- Dashboard (oculto hasta descifrar) -->
 <div id="app" style="display:none">
   <header>
-    <div>
-      <h1>&#128200; Finanzas Familiares</h1>
-      <div class="sub">Francisco Carrasco &mdash; Resumen consolidado</div>
-    </div>
-    <div class="badge-gen">Actualizado: <span id="genDate"></span></div>
+    <h1>&#128200; Finanzas Familiares</h1>
+    <div class="sub">Francisco Carrasco &mdash; actualizado <span id="genDate"></span></div>
   </header>
-  <main>
+  <div class="tabs">
+    <button class="tab on" id="tab-rt">Mes en curso</button>
+    <button class="tab" id="tab-of">Cierre mensual</button>
+  </div>
+
+  <!-- ===================== VISTA 1: MES EN CURSO ===================== -->
+  <main id="vista-rt">
+    <div class="aviso">Datos <b>provisionales</b> desde las notificaciones del banco (al día). Los montos definitivos se confirman en el estado de cuenta.</div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card amber">
+        <div class="kpi-label">Gasto del mes al día</div>
+        <div class="kpi-value" id="rt-gasto">&mdash;</div>
+        <div class="kpi-sub" id="rt-gasto-sub">&mdash;</div>
+      </div>
+      <div class="kpi-card" id="rt-card-tend">
+        <div class="kpi-label">Ritmo vs esperado</div>
+        <div class="kpi-value" id="rt-tend">&mdash;</div>
+        <div class="kpi-sub" id="rt-tend-sub">&mdash;</div>
+      </div>
+      <div class="kpi-card teal">
+        <div class="kpi-label">Contado (crédito)</div>
+        <div class="kpi-value" id="rt-contado">&mdash;</div>
+        <div class="kpi-sub">compras en 1 cuota</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">En cuotas (crédito)</div>
+        <div class="kpi-value" id="rt-cuotas">&mdash;</div>
+        <div class="kpi-sub">monto total comprado</div>
+      </div>
+    </div>
+
+    <div class="filtros">
+      <span class="lbl">Tipo</span>
+      <button class="chip on" data-f="rt-tipo" data-v="todos">Todos</button>
+      <button class="chip" data-f="rt-tipo" data-v="contado">Contado</button>
+      <button class="chip" data-f="rt-tipo" data-v="cuotas">En cuotas</button>
+      <span class="sep"></span>
+      <span class="lbl">Tarjeta</span>
+      <span id="rt-chips-tarjeta"></span>
+    </div>
+
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title">Contado vs Cuotas</div>
+        <div class="chart-wrap-sm"><canvas id="chRtTipo"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Gasto por categoría del mes</div>
+        <div class="chart-wrap-sm"><canvas id="chRtCat"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Últimas transacciones <span id="rt-n" style="color:var(--muted);font-weight:400"></span></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Fecha</th><th>Comercio</th><th>Categoría</th><th>Medio</th>
+            <th>Tarjeta</th><th>Tipo</th><th style="text-align:right">Monto</th>
+          </tr></thead>
+          <tbody id="rt-feed"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== VISTA 2: CIERRE MENSUAL ===================== -->
+  <main id="vista-of" style="display:none">
+    <div class="aviso ofi">Datos <b>oficiales</b> del banco (estado de cuenta y cartola). Se actualizan una vez al mes.</div>
+
     <div class="kpi-grid">
       <div class="kpi-card purple">
         <div class="kpi-label">Cuotas comprometidas a futuro</div>
@@ -80,22 +170,22 @@
         <div class="kpi-sub" id="kpi-n-cuotas">&mdash;</div>
       </div>
       <div class="kpi-card blue">
-        <div class="kpi-label">Cuotas a pagar pr&oacute;ximo mes</div>
+        <div class="kpi-label">Cuotas a pagar próximo mes</div>
         <div class="kpi-value" id="kpi-cuota-prox">&mdash;</div>
-        <div class="kpi-sub">tarjeta de cr&eacute;dito</div>
+        <div class="kpi-sub">según el banco</div>
       </div>
       <div class="kpi-card amber">
-        <div class="kpi-label">Saldo inicial del per&iacute;odo</div>
+        <div class="kpi-label">Saldo inicial del período</div>
         <div class="kpi-value" id="kpi-saldo-ini">&mdash;</div>
         <div class="kpi-sub">cuenta corriente</div>
       </div>
       <div class="kpi-card green">
-        <div class="kpi-label">Total ingresos del per&iacute;odo</div>
+        <div class="kpi-label">Total ingresos del período</div>
         <div class="kpi-value" id="kpi-ingresos">&mdash;</div>
         <div class="kpi-sub">abonos cuenta corriente</div>
       </div>
       <div class="kpi-card red">
-        <div class="kpi-label">Total gastos del per&iacute;odo</div>
+        <div class="kpi-label">Total gastos del período</div>
         <div class="kpi-value" id="kpi-gastos">&mdash;</div>
         <div class="kpi-sub">egresos cuenta corriente</div>
       </div>
@@ -105,27 +195,45 @@
         <div class="kpi-sub">estimado por tendencia</div>
       </div>
     </div>
+
+    <div class="filtros">
+      <span class="lbl">Tipo</span>
+      <button class="chip on" data-f="of-tipo" data-v="todos">Todos</button>
+      <button class="chip" data-f="of-tipo" data-v="contado">Contado</button>
+      <button class="chip" data-f="of-tipo" data-v="cuotas">En cuotas</button>
+      <span class="sep"></span>
+      <span class="lbl">Tarjeta</span>
+      <span id="of-chips-tarjeta"></span>
+    </div>
+
     <div class="chart-grid">
       <div class="card">
-        <div class="card-title">Gastos TC por Categor&iacute;a</div>
-        <div class="chart-wrap-sm"><canvas id="chartTC"></canvas></div>
+        <div class="card-title">Contado vs Cuotas (tarjeta)</div>
+        <div class="chart-wrap-sm"><canvas id="chOfTipo"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-title">Evoluci&oacute;n Mensual Cuenta Corriente</div>
-        <div class="chart-wrap"><canvas id="chartCC"></canvas></div>
+        <div class="card-title">Gastos TC por categoría</div>
+        <div class="chart-wrap-sm"><canvas id="chOfCat"></canvas></div>
       </div>
     </div>
+
     <div class="card-full">
-      <div class="card-title">Compromisos de Cuotas &mdash; Pr&oacute;ximos 12 Meses</div>
+      <div class="card-title">Evolución mensual cuenta corriente</div>
+      <div class="chart-wrap"><canvas id="chartCC"></canvas></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Compromisos de cuotas &mdash; próximos meses</div>
       <div class="chart-wrap"><canvas id="chartProy"></canvas></div>
     </div>
+
     <div class="card-full">
-      <div class="card-title">Detalle de Cuotas Pendientes</div>
+      <div class="card-title">Detalle de cuotas pendientes</div>
       <div style="overflow-x:auto">
-        <table id="tablaCuotas">
+        <table>
           <thead><tr>
-            <th>Comercio</th><th>Categor&iacute;a</th><th>Estado</th><th>Cuota</th><th>Rest.</th>
-            <th style="text-align:right">Cuota/Mes</th><th style="text-align:right">Monto Restante</th><th>Pr&oacute;xima</th>
+            <th>Comercio</th><th>Categoría</th><th>Estado</th><th>Cuota</th><th>Rest.</th>
+            <th style="text-align:right">Cuota/Mes</th><th style="text-align:right">Monto Restante</th><th>Próxima</th>
           </tr></thead>
           <tbody id="tablaCuotasBody"></tbody>
         </table>
@@ -136,116 +244,265 @@
 
 <script>
 const ITER = 200000;
-const clp = n => "$" + Math.round(n).toLocaleString("es-CL");
+const clp  = n => "$" + Math.round(n || 0).toLocaleString("es-CL");
+const clpN = n => (n === null || n === undefined) ? "Sin datos" : clp(n);
 const COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#7c3aed","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
+let DATA = null;
+const charts = {};
+const filtros = { "rt-tipo":"todos", "rt-tarjeta":"todas", "of-tipo":"todos", "of-tarjeta":"todas" };
 
-// ── Descifrado (contrato identico a cripto.py) ──────────────────────
+function chart(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+const ejeY = { ticks:{ callback:v => "$"+(v/1e6>=1?(v/1e6).toFixed(1)+"M":v/1e3>=1?(v/1e3).toFixed(0)+"K":v) } };
+
+// ── Descifrado (mismo contrato que cripto.py) ──────────────────────
 async function descifrar(b64, frase) {
   const raw = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
   const salt = raw.slice(0,16), nonce = raw.slice(16,28), ct = raw.slice(28);
-  const enc = new TextEncoder();
-  const base = await crypto.subtle.importKey("raw", enc.encode(frase), "PBKDF2", false, ["deriveKey"]);
-  const key = await crypto.subtle.deriveKey(
-    {name:"PBKDF2", salt, iterations:ITER, hash:"SHA-256"},
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(frase), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:ITER, hash:"SHA-256"},
     base, {name:"AES-GCM", length:256}, false, ["decrypt"]);
-  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:nonce}, key, ct);
-  return new TextDecoder().decode(pt);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM", iv:nonce}, key, ct));
 }
 
 async function entrar(frase) {
   const resp = await fetch("./data.enc", {cache:"no-store"});
   if (!resp.ok) throw new Error("sin datos");
-  const blob = await resp.text();
-  const DATA = JSON.parse(await descifrar(blob, frase));   // lanza si la frase es incorrecta
+  DATA = JSON.parse(await descifrar(await resp.text(), frase));
   localStorage.setItem("frase", frase);
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "block";
-  render(DATA);
+  document.getElementById("genDate").textContent = DATA.generado_en;
+  initTarjetas(); renderRT(); renderOF();
 }
 
-// ── Render del dashboard ────────────────────────────────────────────
-function render(DATA) {
-  const clpN = n => (n === null || n === undefined) ? "Sin datos" : clp(n);
-  document.getElementById("genDate").textContent          = DATA.generado_en;
-  document.getElementById("kpi-comprometido").textContent = clp(DATA.kpis.total_comprometido);
-  document.getElementById("kpi-n-cuotas").textContent     = `${DATA.kpis.n_activas} activas + ${DATA.kpis.n_nuevas} nuevas`;
-  document.getElementById("kpi-cuota-prox").textContent   = clp(DATA.kpis.cuota_proximo_mes);
-  document.getElementById("kpi-saldo-ini").textContent    = clpN(DATA.kpis.saldo_inicial);
-  document.getElementById("kpi-ingresos").textContent     = clp(DATA.kpis.ingresos_cc);
-  document.getElementById("kpi-gastos").textContent       = clp(DATA.kpis.egresos_cc);
-  document.getElementById("kpi-saldo-proy").textContent   = clpN(DATA.kpis.saldo_proyectado);
-  const proyCard = document.getElementById("card-proy");
-  if (DATA.kpis.saldo_proyectado != null && DATA.kpis.saldo_inicial != null)
-    proyCard.style.borderTopColor =
-      DATA.kpis.saldo_proyectado >= DATA.kpis.saldo_inicial ? "var(--green)" : "var(--red)";
+// ── Filtros ────────────────────────────────────────────────────────
+function initTarjetas() {
+  const mk = (cont, fkey, lista) => {
+    const el = document.getElementById(cont);
+    el.innerHTML = "";
+    const add = (v, txt) => {
+      const b = document.createElement("button");
+      b.className = "chip" + (v === "todas" ? " on" : "");
+      b.dataset.f = fkey; b.dataset.v = v; b.textContent = txt;
+      el.appendChild(b);
+    };
+    add("todas", "Todas");
+    lista.forEach(t => add(t, "••" + t));
+  };
+  const rtT = Object.keys((DATA.on_time && DATA.on_time.tarjetas) || {});
+  mk("rt-chips-tarjeta", "rt-tarjeta", rtT);
+  mk("of-chips-tarjeta", "of-tarjeta", (DATA.oficial_extra && DATA.oficial_extra.tarjetas) || []);
+}
 
-  if (DATA.tc_categorias.labels.length > 0) {
-    new Chart(document.getElementById("chartTC"), {
-      type:"doughnut",
-      data:{ labels:DATA.tc_categorias.labels, datasets:[{ data:DATA.tc_categorias.values,
-        backgroundColor:COLORS.slice(0,DATA.tc_categorias.labels.length), borderWidth:2, borderColor:"#fff", hoverOffset:8 }] },
-      options:{ responsive:true, maintainAspectRatio:false, cutout:"62%",
-        plugins:{ legend:{ position:"right", labels:{ font:{size:11}, padding:10, boxWidth:12 } },
-          tooltip:{ callbacks:{ label:ctx=>` ${ctx.label}: ${clp(ctx.raw)}` } } } }
-    });
-  } else { document.getElementById("chartTC").parentElement.innerHTML =
-    '<p style="color:var(--muted);text-align:center;padding:40px">Sin datos TC.</p>'; }
+document.addEventListener("click", e => {
+  const b = e.target.closest(".chip");
+  if (!b) return;
+  const f = b.dataset.f;
+  document.querySelectorAll('.chip[data-f="' + f + '"]').forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  filtros[f] = b.dataset.v;
+  if (f.startsWith("rt-")) renderRT(); else renderOF();
+});
 
-  if (DATA.cc_mensual.labels.length > 0) {
-    new Chart(document.getElementById("chartCC"), {
+// ── VISTA 1: mes en curso ──────────────────────────────────────────
+function renderRT() {
+  const o = DATA.on_time || {};
+  if (!o.disponible) {
+    document.getElementById("rt-feed").innerHTML =
+      '<tr><td colspan="7" class="vacio">Aún no hay notificaciones procesadas.</td></tr>';
+    return;
+  }
+  const tipo = filtros["rt-tipo"], tar = filtros["rt-tarjeta"];
+  const movs = (o.feed || []).filter(m => {
+    if (!m.gasto) return false;
+    if (m.mes !== o.mes_actual) return false;          // solo el mes en curso
+    if (tar !== "todas" && m.tarjeta !== tar) return false;
+    if (tipo === "contado" && !(m.medio === "Credito" && m.cuotas === 0)) return false;
+    if (tipo === "cuotas"  && !(m.medio === "Credito" && m.cuotas > 0))  return false;
+    return true;
+  });
+
+  // KPIs: si no hay filtro se usan los totales del mes; con filtro, lo filtrado
+  const sinFiltro = (tipo === "todos" && tar === "todas");
+  const total = sinFiltro ? o.gasto_mes : movs.reduce((a,m) => a + m.monto, 0);
+  document.getElementById("rt-gasto").textContent = clp(total);
+  document.getElementById("rt-gasto-sub").textContent =
+    o.mes_label + " · día " + o.dia + " de " + o.dias_mes + (sinFiltro ? "" : " (filtrado)");
+
+  const cardT = document.getElementById("rt-card-tend");
+  if (o.esperado) {
+    const dif = o.gasto_mes - o.esperado;
+    document.getElementById("rt-tend").textContent = (dif >= 0 ? "+" : "−") + clp(Math.abs(dif)).slice(1);
+    document.getElementById("rt-tend-sub").textContent = "esperado a hoy: " + clp(o.esperado);
+    cardT.style.borderTopColor = dif > 0 ? "var(--red)" : "var(--green)";
+  } else {
+    document.getElementById("rt-tend").textContent = "—";
+    document.getElementById("rt-tend-sub").textContent = "necesita un mes completo de historial";
+    cardT.style.borderTopColor = "var(--muted)";
+  }
+
+  const cc = o.contado_cuotas || {contado:0, cuotas:0};
+  document.getElementById("rt-contado").textContent = clp(cc.contado);
+  document.getElementById("rt-cuotas").textContent  = clp(cc.cuotas);
+
+  chart("chRtTipo", {
+    type:"doughnut",
+    data:{ labels:["Contado","En cuotas"], datasets:[{ data:[cc.contado, cc.cuotas],
+      backgroundColor:["#0891b2","#7c3aed"], borderWidth:2, borderColor:"#fff" }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:"58%",
+      plugins:{ legend:{position:"bottom", labels:{font:{size:11}}},
+        tooltip:{ callbacks:{ label:c => " " + c.label + ": " + clp(c.raw) } } } }
+  });
+
+  // Categorías: recalculadas sobre lo filtrado
+  const agg = {};
+  movs.forEach(m => { agg[m.cat] = (agg[m.cat] || 0) + m.monto; });
+  const cats = Object.entries(agg).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  chart("chRtCat", {
+    type:"bar",
+    data:{ labels:cats.map(c=>c[0]), datasets:[{ data:cats.map(c=>c[1]),
+      backgroundColor:"rgba(245,158,11,.8)", borderRadius:4 }] },
+    options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c => " " + clp(c.raw) } } },
+      scales:{ x:ejeY, y:{ ticks:{font:{size:10}} } } }
+  });
+
+  const tb = document.getElementById("rt-feed");
+  document.getElementById("rt-n").textContent = "(" + movs.length + ")";
+  tb.innerHTML = movs.length ? "" : '<tr><td colspan="7" class="vacio">Sin movimientos con este filtro.</td></tr>';
+  movs.slice(0, 50).forEach(m => {
+    const esCuotas = m.medio === "Credito" && m.cuotas > 0;
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td>" + m.fecha + (m.hora ? " <span style='color:var(--muted)'>" + m.hora + "</span>" : "") + "</td>" +
+      "<td style='font-weight:600'>" + m.desc + "</td>" +
+      "<td><span class='tag-cat'>" + m.cat + "</span></td>" +
+      "<td>" + m.medio + "</td>" +
+      "<td>" + (m.tarjeta ? "••" + m.tarjeta : "—") + "</td>" +
+      "<td>" + (m.medio !== "Credito" ? "—" :
+        (esCuotas ? "<span class='badge b-cuotas'>" + m.cuotas + " cuotas</span>"
+                  : "<span class='badge b-contado'>Contado</span>")) + "</td>" +
+      "<td class='num' style='font-weight:600'>" + clp(m.monto) + "</td>";
+    tb.appendChild(tr);
+  });
+}
+
+// ── VISTA 2: cierre mensual ────────────────────────────────────────
+function renderOF() {
+  const k = DATA.kpis, ex = DATA.oficial_extra || {movs:[], tarjetas:[]};
+  document.getElementById("kpi-comprometido").textContent = clp(k.total_comprometido);
+  document.getElementById("kpi-n-cuotas").textContent     = k.n_activas + " activas + " + k.n_nuevas + " nuevas";
+  document.getElementById("kpi-cuota-prox").textContent   = clp(k.cuota_proximo_mes);
+  document.getElementById("kpi-saldo-ini").textContent    = clpN(k.saldo_inicial);
+  document.getElementById("kpi-ingresos").textContent     = clp(k.ingresos_cc);
+  document.getElementById("kpi-gastos").textContent       = clp(k.egresos_cc);
+  document.getElementById("kpi-saldo-proy").textContent   = clpN(k.saldo_proyectado);
+  if (k.saldo_proyectado != null && k.saldo_inicial != null)
+    document.getElementById("card-proy").style.borderTopColor =
+      k.saldo_proyectado >= k.saldo_inicial ? "var(--green)" : "var(--red)";
+
+  const tipo = filtros["of-tipo"], tar = filtros["of-tarjeta"];
+  const movs = (ex.movs || []).filter(m => {
+    if (tar !== "todas" && m.tarjeta !== tar) return false;
+    if (tipo === "contado" && m.tipo !== "Contado") return false;
+    if (tipo === "cuotas"  && m.tipo !== "Cuotas")  return false;
+    return true;
+  });
+  let cont = 0, cuo = 0, agg = {};
+  movs.forEach(m => {
+    if (m.tipo === "Cuotas") cuo += m.monto; else cont += m.monto;
+    agg[m.cat] = (agg[m.cat] || 0) + m.monto;
+  });
+
+  chart("chOfTipo", {
+    type:"doughnut",
+    data:{ labels:["Contado","En cuotas"], datasets:[{ data:[cont, cuo],
+      backgroundColor:["#0891b2","#7c3aed"], borderWidth:2, borderColor:"#fff" }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:"58%",
+      plugins:{ legend:{position:"bottom", labels:{font:{size:11}}},
+        tooltip:{ callbacks:{ label:c => " " + c.label + ": " + clp(c.raw) } } } }
+  });
+
+  const cats = Object.entries(agg).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  chart("chOfCat", {
+    type:"bar",
+    data:{ labels:cats.map(c=>c[0]), datasets:[{ data:cats.map(c=>c[1]),
+      backgroundColor:"rgba(37,99,235,.8)", borderRadius:4 }] },
+    options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c => " " + clp(c.raw) } } },
+      scales:{ x:ejeY, y:{ ticks:{font:{size:10}} } } }
+  });
+
+  if (DATA.cc_mensual.labels.length) {
+    chart("chartCC", {
       type:"bar",
       data:{ labels:DATA.cc_mensual.labels, datasets:[
         { label:"Ingresos", data:DATA.cc_mensual.abonos, backgroundColor:"rgba(16,185,129,.75)", borderRadius:4 },
-        { label:"Egresos",  data:DATA.cc_mensual.cargos, backgroundColor:"rgba(239,68,68,.72)", borderRadius:4 } ] },
+        { label:"Egresos",  data:DATA.cc_mensual.cargos, backgroundColor:"rgba(239,68,68,.72)", borderRadius:4 }] },
       options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ position:"top", labels:{ font:{size:11} } },
-          tooltip:{ callbacks:{ label:ctx=>` ${ctx.dataset.label}: ${clp(ctx.raw)}` } } },
-        scales:{ x:{ grid:{display:false} }, y:{ ticks:{ callback:v=>"$"+(v/1e6>=1?(v/1e6).toFixed(1)+"M":v/1e3>=1?(v/1e3).toFixed(0)+"K":v) } } } }
-    });
-  } else { document.getElementById("chartCC").parentElement.innerHTML =
-    '<p style="color:var(--muted);text-align:center;padding:40px">Sin datos CC.</p>'; }
-
-  if (DATA.proyeccion.labels.length > 0) {
-    const pMax = Math.max(...DATA.proyeccion.totales);
-    new Chart(document.getElementById("chartProy"), {
-      type:"bar",
-      data:{ labels:DATA.proyeccion.labels, datasets:[{ label:"Cuotas a pagar", data:DATA.proyeccion.totales,
-        backgroundColor:DATA.proyeccion.totales.map(v=>v===pMax?"rgba(124,58,237,.85)":"rgba(37,99,235,.70)"), borderRadius:5 }] },
-      options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>` Cuotas: ${clp(ctx.raw)}` } } },
-        scales:{ x:{ grid:{display:false} }, y:{ ticks:{ callback:v=>"$"+(v/1e6>=1?(v/1e6).toFixed(1)+"M":v/1e3>=1?(v/1e3).toFixed(0)+"K":v) } } } }
-    });
-  } else { document.getElementById("chartProy").parentElement.innerHTML =
-    '<p style="color:var(--muted);text-align:center;padding:40px">Sin proyecci&oacute;n.</p>'; }
-
-  const tbody = document.getElementById("tablaCuotasBody");
-  tbody.innerHTML = "";
-  if (DATA.cuotas_tabla.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Sin cuotas pendientes.</td></tr>';
-  } else {
-    DATA.cuotas_tabla.forEach(r => {
-      const esNueva = r.estado.includes("Nueva");
-      const badge = esNueva ? '<span class="badge badge-nueva">&#9733; Nueva</span>' : '<span class="badge badge-activa">Activa</span>';
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td style="font-weight:600">${r.comercio}</td>
-        <td><span class="tag-cat">${r.categoria}</span></td><td>${badge}</td>
-        <td style="text-align:center">${r.cuota}</td><td style="text-align:center">${r.restantes}</td>
-        <td class="num">${clp(r.valor_mes)}</td>
-        <td class="num" style="font-weight:600;color:var(--navy)">${clp(r.restante)}</td><td>${r.proxima}</td>`;
-      tbody.appendChild(tr);
+        plugins:{ legend:{position:"top"}, tooltip:{ callbacks:{ label:c => " " + c.dataset.label + ": " + clp(c.raw) } } },
+        scales:{ x:{grid:{display:false}}, y:ejeY } }
     });
   }
+
+  if (DATA.proyeccion.labels.length) {
+    const pMax = Math.max(...DATA.proyeccion.totales);
+    chart("chartProy", {
+      type:"bar",
+      data:{ labels:DATA.proyeccion.labels, datasets:[{ data:DATA.proyeccion.totales,
+        backgroundColor:DATA.proyeccion.totales.map(v => v===pMax ? "rgba(124,58,237,.85)" : "rgba(37,99,235,.7)"),
+        borderRadius:5 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c => " Cuotas: " + clp(c.raw) } } },
+        scales:{ x:{grid:{display:false}}, y:ejeY } }
+    });
+  }
+
+  const tb = document.getElementById("tablaCuotasBody");
+  tb.innerHTML = "";
+  const filas = (DATA.cuotas_tabla || []);
+  if (!filas.length) tb.innerHTML = '<tr><td colspan="8" class="vacio">Sin cuotas pendientes.</td></tr>';
+  filas.forEach(r => {
+    const nueva = r.estado.includes("Nueva");
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td style='font-weight:600'>" + r.comercio + "</td>" +
+      "<td><span class='tag-cat'>" + r.categoria + "</span></td>" +
+      "<td><span class='badge " + (nueva ? "b-nueva'>★ Nueva" : "b-activa'>Activa") + "</span></td>" +
+      "<td style='text-align:center'>" + r.cuota + "</td>" +
+      "<td style='text-align:center'>" + r.restantes + "</td>" +
+      "<td class='num'>" + clp(r.valor_mes) + "</td>" +
+      "<td class='num' style='font-weight:600;color:var(--navy)'>" + clp(r.restante) + "</td>" +
+      "<td>" + r.proxima + "</td>";
+    tb.appendChild(tr);
+  });
 }
 
-// ── Arranque ────────────────────────────────────────────────────────
+// ── Tabs ───────────────────────────────────────────────────────────
+document.getElementById("tab-rt").onclick = () => {
+  document.getElementById("tab-rt").classList.add("on");
+  document.getElementById("tab-of").classList.remove("on");
+  document.getElementById("vista-rt").style.display = "block";
+  document.getElementById("vista-of").style.display = "none";
+};
+document.getElementById("tab-of").onclick = () => {
+  document.getElementById("tab-of").classList.add("on");
+  document.getElementById("tab-rt").classList.remove("on");
+  document.getElementById("vista-of").style.display = "block";
+  document.getElementById("vista-rt").style.display = "none";
+};
+
+// ── Arranque ───────────────────────────────────────────────────────
 document.getElementById("btn").onclick = () =>
   entrar(document.getElementById("frase").value).catch(() =>
     document.getElementById("err").textContent = "Frase incorrecta o sin conexión.");
 document.getElementById("frase").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("btn").click(); });
-
 window.addEventListener("load", () => {
   const f = localStorage.getItem("frase");
-  if (f) entrar(f).catch(() => {});   // auto-entra si ya guardaste la frase
+  if (f) entrar(f).catch(() => {});
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
 });
 </script>
