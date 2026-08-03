@@ -406,6 +406,14 @@
     </div>
 
     <div class="card-full">
+      <div class="card-title">Tendencia por gran categoría
+        <span style="color:var(--muted);font-weight:400;text-transform:none">· 6 meses</span></div>
+      <p class="an-nota">Las ~39 categorías agrupadas en bloques, para ver el movimiento de fondo
+        sin perderse en el detalle.</p>
+      <div class="chart-wrap"><canvas id="chAnGrupos"></canvas></div>
+    </div>
+
+    <div class="card-full">
       <div class="card-title">Dónde se está yendo la diferencia</div>
       <p class="an-nota">Gasto del mes en curso contra tu promedio de los meses anteriores,
         ajustado al día <span id="an-dia">—</span>. En rojo lo que va por sobre tu costumbre.</p>
@@ -444,6 +452,10 @@ const COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#7c3aed","#06b6d4","#f9
 const PALETA = ["#2a78d6","#a0522d","#1baf7a","#eda100","#e87ba4",
                 "#008300","#4a3aa7","#e34948","#00a0b0","#eb6834"];
 const N_CATS = 10;
+// Grandes categorías: orden fijo (el backend las asigna en `grupo`). El orden
+// define el color, así el bloque conserva su tono entre vistas y entre modos.
+const GRUPOS = ["Alimentación", "Salud", "Transporte", "Hogar y cuentas",
+                "Familia y educación", "Ocio y compras", "Transferencias"];
 const GRIS_RESTO = "#9ca3af";     // el cajon "resto" es recesivo a proposito
 const RESTO = " resto";      // clave interna, no colisiona con una categoria real
 let TOP_CATS = [];                // top 6 del periodo, fijado al cargar los datos
@@ -476,7 +488,11 @@ function apilarPorMes(rows, meses, clave, topFijo, colores) {
   const series = fijas.filter(k => meses.some(mm => agg[mm + "|" + k]));
   if (vistas.size) series.push(RESTO);
   return series.map((k, i) => ({
-    label: k === RESTO ? "Otras " + vistas.size + " categorías" : k,
+    // Si al cajón "resto" cae una sola serie, se la nombra: decir
+    // "Otras 1 categorías" es peor que decir cómo se llama.
+    label: k !== RESTO ? k
+           : vistas.size === 1 ? [...vistas][0]
+           : "Otras " + vistas.size + " categorías",
     data: meses.map(mm => agg[mm + "|" + k] || 0),
     backgroundColor: k === RESTO ? GRIS_RESTO
                      : (colores && colores[k]) || PALETA[fijas.indexOf(k) % PALETA.length],
@@ -1019,6 +1035,15 @@ function renderAN() {
     esCerrado ? "Cierre de " + mesLabel(a.objetivo) : "Ritmo del mes";
   document.getElementById("an-dia").textContent =
     esCerrado ? "mes completo" : o.dia + " de " + o.dias_mes;
+
+  // Chart.js entra en bucle si mide un contenedor con display:none. Los gráficos
+  // se dibujan solo con la vista visible; el click de la pestaña vuelve a llamar.
+  if (document.getElementById("vista-an").style.display === "none") return;
+
+  // Tendencia por gran categoría: bloques fijos, mismo color en ambos modos
+  const gastoTodo = (o.feed || []).filter(m => m.gasto && a.meses.includes(m.mes));
+  chartApilado("chAnGrupos", a.meses.map(mesLabel),
+    apilarPorMes(gastoTodo, a.meses, m => m.grupo || "Otros", GRUPOS));
 
   // Sparkline del gasto mensual, con el mes en curso destacado
   chart("chAnRitmo", {
