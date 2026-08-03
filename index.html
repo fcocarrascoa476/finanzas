@@ -234,6 +234,13 @@
           <option value="mayor">Mayor monto primero</option>
           <option value="menor">Menor monto primero</option>
         </select>
+        <select id="rt-desde" class="orden" title="Desde"></select>
+        <select id="rt-hasta" class="orden" title="Hasta"></select>
+        <select id="rt-tope" class="orden">
+          <option value="50">50 filas</option>
+          <option value="200">200 filas</option>
+          <option value="0">Todos</option>
+        </select>
       </div>
       <div style="overflow-x:auto">
         <table>
@@ -339,6 +346,13 @@
           <option value="mayor">Mayor monto primero</option>
           <option value="menor">Menor monto primero</option>
         </select>
+        <select id="of-desde" class="orden" title="Desde"></select>
+        <select id="of-hasta" class="orden" title="Hasta"></select>
+        <select id="of-tope" class="orden">
+          <option value="50">50 filas</option>
+          <option value="200">200 filas</option>
+          <option value="0">Todos</option>
+        </select>
       </div>
       <div style="overflow-x:auto">
         <table>
@@ -368,13 +382,22 @@
 
   <!-- ===================== VISTA 3: ANÁLISIS ===================== -->
   <main id="vista-an" style="display:none">
-    <div class="aviso">Lectura automática de tus últimos 6 meses. Compara el mes en curso contra
+    <div class="filtros">
+      <div class="fgrupo">
+        <span class="lbl">Qué analizar</span>
+        <div class="fchips">
+          <button class="chip on" data-f="an-modo" data-v="curso">Mes en curso vs tendencia</button>
+          <button class="chip" data-f="an-modo" data-v="cerrado" id="an-chip-cerrado">Cierre del período anterior</button>
+        </div>
+      </div>
+    </div>
+    <div class="aviso" id="an-aviso">Lectura automática de tus últimos 6 meses. Compara el mes en curso contra
       tu propio promedio, no contra un presupuesto teórico.</div>
 
     <div class="card-full" id="an-veredicto-card">
       <div class="an-hero">
         <div class="an-hero-txt">
-          <div class="kpi-label">Ritmo del mes</div>
+          <div class="kpi-label" id="an-kpi-label">Ritmo del mes</div>
           <div class="an-hero-num" id="an-veredicto">&mdash;</div>
           <div class="an-hero-sub" id="an-veredicto-sub">&mdash;</div>
         </div>
@@ -414,9 +437,13 @@ const ITER = 200000;
 const clp  = n => "$" + Math.round(n || 0).toLocaleString("es-CL");
 const clpN = n => (n === null || n === undefined) ? "Sin datos" : clp(n);
 const COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#7c3aed","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
-// Paleta categorica validada (separacion suficiente para daltonismo). El orden
-// es fijo: el color va amarrado a la categoria, nunca a su puesto en el ranking.
-const PALETA = ["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#008300"];
+// Paleta categorica de 10 slots, validada para daltonismo (ΔE >= 8 entre pares
+// contiguos). El ORDEN importa: café y rojo se parecen bajo protanopia, por eso
+// van separados en la secuencia. No agregar un slot 11 sin volver a validar.
+// El orden tambien fija el color de cada categoria, nunca su puesto en el ranking.
+const PALETA = ["#2a78d6","#a0522d","#1baf7a","#eda100","#e87ba4",
+                "#008300","#4a3aa7","#e34948","#00a0b0","#eb6834"];
+const N_CATS = 10;
 const GRIS_RESTO = "#9ca3af";     // el cajon "resto" es recesivo a proposito
 const RESTO = " resto";      // clave interna, no colisiona con una categoria real
 let TOP_CATS = [];                // top 6 del periodo, fijado al cargar los datos
@@ -424,7 +451,8 @@ let TOP_CATS_OF = [];             // idem para la vista oficial
 let DATA = null;
 const charts = {};
 const filtros = { "rt-mes":"", "rt-origen":"todos", "rt-tipo":"todos", "rt-tarjeta":"todas",
-                  "of-mes":"todos", "of-tipo":"todos", "of-tarjeta":"todas" };
+                  "of-mes":"todos", "of-tipo":"todos", "of-tarjeta":"todas",
+                  "an-modo":"curso" };
 const COL_MEDIO = { Credito:"#2563eb", Debito:"#0891b2", Transferencia:"#f59e0b" };
 const NOM_MEDIO = { Credito:"Crédito", Debito:"Débito", Transferencia:"Transferencias" };
 const MES_ABR = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -504,8 +532,10 @@ function mostrar(datos) {
   // filtros aplicados, para que no cambie al filtrar.
   const o = DATA.on_time || {}, ex = DATA.oficial_extra || {};
   const mesesRT = (o.meses || []).map(x => x.v);
-  TOP_CATS = topCategorias((o.feed || []).filter(m => m.gasto && mesesRT.indexOf(m.mes) >= 0), 6);
-  TOP_CATS_OF = topCategorias(ex.movs || [], 6);
+  TOP_CATS = topCategorias((o.feed || []).filter(m => m.gasto && mesesRT.indexOf(m.mes) >= 0), N_CATS);
+  TOP_CATS_OF = topCategorias(ex.movs || [], N_CATS);
+  initRango("rt", [...new Set((o.feed || []).map(m => m.mes))].filter(Boolean).sort().reverse());
+  initRango("of", [...new Set((ex.movs || []).map(m => m.mes))].filter(Boolean).sort().reverse());
   initFiltros(); renderRT(); renderOF(); renderAN();
 }
 
@@ -530,6 +560,14 @@ function chips(cont, fkey, items, activo) {
   filtros[fkey] = activo;
 }
 
+// Deja marcado un chip por código (mismo efecto que si el usuario lo tocara)
+function marcarChip(fkey, valor) {
+  const chips = document.querySelectorAll('.chip[data-f="' + fkey + '"]');
+  if (!chips.length) return;
+  chips.forEach(c => c.classList.toggle("on", c.dataset.v === valor));
+  filtros[fkey] = valor;
+}
+
 function initFiltros() {
   const o = DATA.on_time || {}, ex = DATA.oficial_extra || {};
   // Tarjetas
@@ -548,12 +586,22 @@ function initFiltros() {
         "todos");
 }
 
-// Buscar y ordenar: al escribir se vuelve al tope inicial de filas
+// Buscar, ordenar, rango de meses y tope de filas
 ["rt", "of"].forEach(p => {
-  const re = () => { estadoTabla[p].tope = 50; p === "rt" ? renderRT() : renderOF(); };
-  document.addEventListener("input",  e => { if (e.target.id === p + "-buscar") re(); });
-  document.addEventListener("change", e => { if (e.target.id === p + "-orden")  re(); });
+  const re = () => { p === "rt" ? renderRT() : renderOF(); };
+  const mios = [p + "-buscar", p + "-orden", p + "-desde", p + "-hasta", p + "-tope"];
+  document.addEventListener("input",  e => { if (mios.includes(e.target.id)) re(); });
+  document.addEventListener("change", e => { if (mios.includes(e.target.id)) re(); });
 });
+
+// Rango de meses: se arma con los meses que existen en cada vista
+function initRango(pref, meses) {
+  const opts = (primera) =>
+    '<option value="">' + primera + "</option>" +
+    meses.map(m => '<option value="' + m + '">' + mesLabel(m) + "</option>").join("");
+  document.getElementById(pref + "-desde").innerHTML = opts("Desde: todo");
+  document.getElementById(pref + "-hasta").innerHTML = opts("Hasta: hoy");
+}
 
 document.addEventListener("click", e => {
   const b = e.target.closest(".chip");
@@ -562,7 +610,9 @@ document.addEventListener("click", e => {
   document.querySelectorAll('.chip[data-f="' + f + '"]').forEach(x => x.classList.remove("on"));
   b.classList.add("on");
   filtros[f] = b.dataset.v;
-  if (f.startsWith("rt-")) renderRT(); else renderOF();
+  if (f.startsWith("rt-")) renderRT();
+  else if (f.startsWith("an-")) renderAN();
+  else renderOF();
 });
 
 // ── VISTA 1: mes en curso ──────────────────────────────────────────
@@ -651,7 +701,7 @@ function renderRT() {
 
   pintarTabla({
     filas: ordenarBuscar(movs, "rt"), cuerpo: "rt-feed", contador: "rt-n",
-    mas: "rt-mas", cols: 7, estado: estadoTabla.rt,
+    mas: "rt-mas", cols: 7, pref: "rt", todas: (o.feed || []).filter(m => m.gasto),
     fila: m => {
       const esCuotas = m.medio === "Credito" && m.cuotas > 0;
       return "<td>" + m.fecha + (m.hora ? " <span style='color:var(--muted)'>" + m.hora + "</span>" : "") + "</td>" +
@@ -668,45 +718,72 @@ function renderRT() {
 }
 
 // ── Tablas: búsqueda, orden y "ver más" ────────────────────────────
-const estadoTabla = { rt: {tope: 50}, of: {tope: 50} };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c =>
   ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
+// Normaliza para buscar: minúsculas y sin tildes, para que "almacen"
+// encuentre "Almacén" y la coincidencia valga en cualquier parte del texto.
+const norm = s => String(s || "").toLowerCase()
+  .normalize("NFD").replace(/[̀-ͯ]/g, "");
+
 function ordenarBuscar(filas, pref) {
-  const q = (document.getElementById(pref + "-buscar").value || "").trim().toLowerCase();
+  const q = norm(document.getElementById(pref + "-buscar").value.trim());
   const orden = document.getElementById(pref + "-orden").value;
-  let out = q ? filas.filter(m => (m.desc + " " + m.cat).toLowerCase().includes(q)) : filas.slice();
+  const desde = document.getElementById(pref + "-desde").value;
+  const hasta = document.getElementById(pref + "-hasta").value;
+  let out = filas.filter(m =>
+    (!desde || m.mes >= desde) && (!hasta || m.mes <= hasta) &&
+    (!q || norm(m.desc + " " + m.cat).includes(q)));
   if (orden === "mayor") out.sort((a,b) => b.monto - a.monto);
   else if (orden === "menor") out.sort((a,b) => a.monto - b.monto);
   return out;   // "fecha" conserva el orden original (ya viene por fecha desc)
 }
 
-function pintarTabla({filas, cuerpo, contador, mas, cols, estado, fila}) {
+// Si la búsqueda no encuentra nada dentro del rango pero sí fuera, se avisa:
+// es el caso típico de buscar una compra de hace meses con el mes actual puesto.
+function fueraDeRango(todas, mostradas, pref) {
+  const q = norm(document.getElementById(pref + "-buscar").value.trim());
+  if (!q || mostradas.length) return 0;
+  return todas.filter(m => norm(m.desc + " " + m.cat).includes(q)).length;
+}
+
+function pintarTabla({filas, cuerpo, contador, mas, cols, pref, fila, todas}) {
   const tb = document.getElementById(cuerpo);
   const total = filas.reduce((a,m) => a + m.monto, 0);
+  // 0 = "Todos": se muestran todas las filas y se navega con el scroll
+  const tope = parseInt(document.getElementById(pref + "-tope").value, 10) || filas.length;
   document.getElementById(contador).textContent =
     "(" + filas.length + " · " + clp(total) + ")";
+  const cont = document.getElementById(mas);
   tb.innerHTML = "";
+  cont.innerHTML = "";
   if (!filas.length) {
-    tb.innerHTML = '<tr><td colspan="' + cols + '" class="vacio">Sin movimientos con este filtro.</td></tr>';
-    document.getElementById(mas).innerHTML = "";
+    const n = fueraDeRango(todas || [], filas, pref);
+    tb.innerHTML = '<tr><td colspan="' + cols + '" class="vacio">' +
+      (n ? "Sin coincidencias en el rango elegido. Hay <b>" + n +
+           "</b> en el resto del historial." : "Sin movimientos con este filtro.") +
+      "</td></tr>";
+    if (n) {
+      cont.innerHTML = "<button>Buscar en todo el historial</button>";
+      cont.firstChild.onclick = () => {
+        document.getElementById(pref + "-desde").value = "";
+        document.getElementById(pref + "-hasta").value = "";
+        // El chip de mes de la vista también acota: hay que abrirlo, si no el
+        // botón "buscar en todo" no encontraría nada y parecería roto.
+        marcarChip(pref + "-mes", "todos");
+        pref === "rt" ? renderRT() : renderOF();
+      };
+    }
     return;
   }
-  filas.slice(0, estado.tope).forEach(m => {
+  filas.slice(0, tope).forEach(m => {
     const tr = document.createElement("tr");
     tr.innerHTML = fila(m);
     tb.appendChild(tr);
   });
-  const cont = document.getElementById(mas);
-  if (filas.length > estado.tope) {
-    cont.innerHTML = "<button>Ver " + Math.min(100, filas.length - estado.tope) +
-                     " más (de " + filas.length + ")</button>";
-    cont.firstChild.onclick = () => { estado.tope += 100; render(); };
-  } else {
-    cont.innerHTML = filas.length > 50
-      ? "<button>Mostrar menos</button>" : "";
-    if (cont.firstChild) cont.firstChild.onclick = () => { estado.tope = 50; render(); };
-  }
+  if (filas.length > tope)
+    cont.innerHTML = '<span style="font-size:.76rem;color:var(--muted)">Mostrando ' + tope +
+                     " de " + filas.length + ' · elige "Todos" para verlas completas</span>';
 }
 
 function render() { renderRT(); renderOF(); }
@@ -789,7 +866,7 @@ function renderOF() {
 
   pintarTabla({
     filas: ordenarBuscar(movs, "of"), cuerpo: "of-movs", contador: "of-n",
-    mas: "of-mas", cols: 7, estado: estadoTabla.of,
+    mas: "of-mas", cols: 7, pref: "of", todas: ex.movs || [],
     fila: m =>
       "<td>" + m.fecha + "</td>" +
       "<td style='font-weight:600'>" + esc(m.desc) + "</td>" +
@@ -824,16 +901,24 @@ function renderOF() {
 // ── VISTA 3: análisis ──────────────────────────────────────────────
 // Todo se compara contra el propio historial del usuario, prorrateado al día
 // del mes: comparar un mes a medias contra meses completos siempre "aprueba".
-function analizar() {
+// modo "curso"  : mes en curso, prorrateado al día de hoy
+// modo "cerrado": último mes ya terminado, completo contra los meses anteriores
+function analizar(modo) {
   const o = DATA.on_time || {};
   if (!o.disponible || !o.feed) return null;
-  const meses = (o.meses || []).map(m => m.v).sort();
-  const previos = meses.filter(m => m !== o.mes_actual);
+  const todos = (o.meses || []).map(m => m.v).sort();
+  const objetivo = modo === "cerrado"
+    ? todos.filter(m => m < o.mes_actual).pop()
+    : o.mes_actual;
+  if (!objetivo) return null;
+  const meses = todos.filter(m => m <= objetivo);
+  const previos = meses.filter(m => m !== objetivo);
   if (!previos.length) return null;
 
   const gasto = o.feed.filter(m => m.gasto);
-  const delMes = gasto.filter(m => m.mes === o.mes_actual);
-  const prop = o.dia / o.dias_mes;                       // fracción del mes transcurrida
+  const delMes = gasto.filter(m => m.mes === objetivo);
+  // El mes cerrado se compara completo; el mes en curso, prorrateado al día
+  const prop = modo === "cerrado" ? 1 : o.dia / o.dias_mes;
 
   // Promedio mensual por categoría en los meses anteriores
   const porCat = {}, catsPrev = {};
@@ -865,20 +950,40 @@ function analizar() {
   const esperadoHoy = totalPrev * prop;
   const real = delMes.reduce((a,m) => a + m.monto, 0);
 
-  return {meses, previos, real, esperadoHoy, promedioMes: totalPrev,
-          proyectado: prop > 0 ? real / prop : 0, desvios, hormiga, top,
+  // Flujo de caja del mes objetivo (cuenta corriente), si la cartola ya llegó
+  const cc = DATA.cc_mensual || {labels:[], abonos:[], cargos:[]};
+  const iCC = cc.labels.indexOf(mesLabel(objetivo));
+  const flujo = iCC >= 0
+    ? {ingresos: cc.abonos[iCC], egresos: cc.cargos[iCC],
+       neto: cc.abonos[iCC] - cc.cargos[iCC]}
+    : null;
+
+  return {modo, objetivo, meses, previos, real, esperadoHoy, promedioMes: totalPrev,
+          proyectado: prop > 0 ? real / prop : 0, desvios, hormiga, top, flujo,
+          nMovs: delMes.length,
           serie: meses.map(mm => gasto.filter(m => m.mes === mm)
                                       .reduce((s,m) => s + m.monto, 0))};
 }
 
 function renderAN() {
-  const a = analizar();
+  const modo = filtros["an-modo"] || "curso";
+  const a = analizar(modo);
   const cont = document.getElementById("an-desvios");
+  const o = DATA.on_time || {};
+  // Rotula el chip con el mes real que se va a analizar
+  const cerrado = ((o.meses || []).map(m => m.v).sort().filter(m => m < o.mes_actual).pop());
+  if (cerrado)
+    document.getElementById("an-chip-cerrado").textContent = "Cierre de " + mesLabel(cerrado);
   if (!a) {
     cont.innerHTML = '<p class="vacio">Se necesita al menos un mes anterior completo para comparar.</p>';
     return;
   }
-  const o = DATA.on_time;
+  const esCerrado = modo === "cerrado";
+  document.getElementById("an-aviso").innerHTML = esCerrado
+    ? "Mes <b>" + mesLabel(a.objetivo) + " ya cerrado</b>, completo, contra el promedio de los " +
+      a.previos.length + " meses anteriores."
+    : "Mes en curso contra tu propio promedio, prorrateado al día que llevamos. " +
+      "No se compara contra un presupuesto teórico.";
   const dif = a.real - a.esperadoHoy;
   const pct = a.esperadoHoy ? dif / a.esperadoHoy * 100 : 0;
   const alto = pct > 10, bajo = pct < -10;
@@ -889,27 +994,38 @@ function renderAN() {
     alto ? "var(--red)" : bajo ? "var(--green)" : "var(--text)";
   // Con pocos días corridos una sola compra grande distorsiona la proyección:
   // se dice, en vez de presentarla como si fuera un pronóstico firme.
-  const temprano = o.dia <= 7;
-  document.getElementById("an-veredicto-sub").innerHTML =
-    (alto ? "Vas <b>sobre</b> tu ritmo habitual" : bajo ? "Vas <b>bajo</b> tu ritmo habitual"
-          : "Vas <b>en línea</b> con tu ritmo habitual") +
-    " (" + (pct >= 0 ? "+" : "") + pct.toFixed(0) + "%). " +
-    (temprano
-      ? "Van solo " + o.dia + " días, así que la proyección a fin de mes (" + clp(a.proyectado) +
-        ") todavía es ruidosa: una compra grande la mueve entera. Tu promedio mensual es " +
-        clp(a.promedioMes) + "."
-      : "A este paso cierras el mes en <b>" + clp(a.proyectado) +
-        "</b>, contra un promedio de " + clp(a.promedioMes) + ".");
+  const temprano = !esCerrado && o.dia <= 7;
+  document.getElementById("an-veredicto-sub").innerHTML = esCerrado
+    ? (alto ? "<b>Cerraste sobre</b> tu promedio" : bajo ? "<b>Cerraste bajo</b> tu promedio"
+            : "Cerraste <b>en línea</b> con tu promedio") +
+      " (" + (pct >= 0 ? "+" : "") + pct.toFixed(0) + "%). Gastaste <b>" + clp(a.real) +
+      "</b> en " + a.nMovs + " movimientos, contra un promedio de " + clp(a.promedioMes) + "." +
+      (a.flujo ? " En la cuenta corriente el flujo del mes fue <b style='color:" +
+        (a.flujo.neto < 0 ? "var(--red)" : "var(--green)") + "'>" +
+        (a.flujo.neto >= 0 ? "+" : "−") + clp(Math.abs(a.flujo.neto)).slice(1) + "</b> (" +
+        clp(a.flujo.ingresos) + " de ingresos contra " + clp(a.flujo.egresos) + " de egresos)." : "")
+    : (alto ? "Vas <b>sobre</b> tu ritmo habitual" : bajo ? "Vas <b>bajo</b> tu ritmo habitual"
+            : "Vas <b>en línea</b> con tu ritmo habitual") +
+      " (" + (pct >= 0 ? "+" : "") + pct.toFixed(0) + "%). " +
+      (temprano
+        ? "Van solo " + o.dia + " días, así que la proyección a fin de mes (" + clp(a.proyectado) +
+          ") todavía es ruidosa: una compra grande la mueve entera. Tu promedio mensual es " +
+          clp(a.promedioMes) + "."
+        : "A este paso cierras el mes en <b>" + clp(a.proyectado) +
+          "</b>, contra un promedio de " + clp(a.promedioMes) + ".");
   document.getElementById("an-veredicto-card").style.borderTop =
     "4px solid " + (alto ? "var(--red)" : bajo ? "var(--green)" : "var(--blue)");
-  document.getElementById("an-dia").textContent = o.dia + " de " + o.dias_mes;
+  document.getElementById("an-kpi-label").textContent =
+    esCerrado ? "Cierre de " + mesLabel(a.objetivo) : "Ritmo del mes";
+  document.getElementById("an-dia").textContent =
+    esCerrado ? "mes completo" : o.dia + " de " + o.dias_mes;
 
   // Sparkline del gasto mensual, con el mes en curso destacado
   chart("chAnRitmo", {
     type:"bar",
     data:{ labels:a.meses.map(mesLabel), datasets:[{
       data:a.serie,
-      backgroundColor:a.meses.map(m => m === o.mes_actual ? "#2a78d6" : "#dbe3ea"),
+      backgroundColor:a.meses.map(m => m === a.objetivo ? "#2a78d6" : "#dbe3ea"),
       borderRadius:3 }] },
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false},
@@ -964,6 +1080,29 @@ function renderAN() {
       "Individualmente no duelen; juntas son el <b>" + Math.round(th / Math.max(a.real,1) * 100) +
       "%</b> de tu gasto del mes. Fijar un tope semanal para estas es más fácil que recortar una compra grande."]);
   }
+  // Consejos de flujo: solo tienen sentido con el mes cerrado y la cartola cargada
+  if (esCerrado && a.flujo) {
+    const f = a.flujo;
+    if (f.neto < 0)
+      c.push(["🔻", "var(--red)", "Cerraste el mes con flujo negativo",
+        "Gastaste <b>" + clp(Math.abs(f.neto)) + "</b> más de lo que ingresó a la cuenta (" +
+        clp(f.egresos) + " contra " + clp(f.ingresos) + "). Un mes puntual se absorbe con saldo; " +
+        "dos seguidos se pagan con línea de crédito, que es la forma más cara de financiarse. " +
+        "El ajuste más directo es la categoría de arriba, no muchos recortes chicos."]);
+    else
+      c.push(["🔺", "var(--green)", "Cerraste el mes con flujo positivo",
+        "Te quedaron <b>" + clp(f.neto) + "</b> sobre lo que gastaste. " +
+        "Ese excedente rinde más en una cuenta aparte que en la corriente: si se queda ahí, " +
+        "tiende a gastarse el mes siguiente sin que lo decidas."]);
+    const pesoTop = a.top.length ? a.top[0].monto / Math.max(a.real, 1) * 100 : 0;
+    if (pesoTop >= 20)
+      c.push(["🏪", "var(--amber)", "Un solo comercio explica el " + pesoTop.toFixed(0) + "% del mes",
+        "<b>" + esc(a.top[0].desc.slice(0,26)) + "</b> concentró " + clp(a.top[0].monto) +
+        " en " + a.top[0].n + (a.top[0].n === 1 ? " compra" : " compras") + ". " +
+        "Cuando el gasto se concentra así, negociar o planificar esa sola relación mueve la aguja " +
+        "más que revisar el resto del mes."]);
+  }
+
   const k = DATA.kpis || {};
   if (k.cuota_proximo_mes && k.ingresos_cc) {
     const carga = k.cuota_proximo_mes / k.ingresos_cc * 100;
@@ -980,7 +1119,7 @@ function renderAN() {
       "Bajaste en " + ahorro.slice(0,3).map(d => "<b>" + esc(d.cat) + "</b>").join(", ") +
       ", con " + clp(Math.abs(ahorro.reduce((s,d) => s + d.dif, 0))) +
       " menos que tu promedio. Eso ya está compensando parte del exceso."]);
-  if (!alto && !bajo)
+  if (!alto && !bajo && !esCerrado)
     c.push(["📊", "var(--blue)", "Mes sin sobresaltos",
       "Vas dentro del 10% de tu comportamiento normal. El mejor uso de este mes es revisar si tu " +
       "promedio de " + clp(a.promedioMes) + " es el nivel al que <b>quieres</b> gastar, no solo al que sueles."]);
