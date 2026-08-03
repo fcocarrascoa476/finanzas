@@ -67,6 +67,48 @@
                 border-bottom:2px solid var(--border); padding-bottom:8px; margin-bottom:12px; }
   .chart-wrap { position:relative; height:250px; } .chart-wrap-sm { position:relative; height:225px; }
 
+  /* Vista de analisis */
+  .an-hero { display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+  .an-hero-txt { flex:1 1 220px; }
+  .an-hero-num { font-size:2rem; font-weight:700; line-height:1.1; margin:4px 0 2px; }
+  .an-hero-sub { font-size:.82rem; color:var(--muted); }
+  .an-hero-chart { flex:1 1 300px; height:120px; position:relative; }
+  .an-nota { font-size:.76rem; color:var(--muted); margin:-4px 0 12px; }
+  /* Barra divergente: sobre/bajo el promedio. Gris al centro, no un color */
+  .an-row { display:grid; grid-template-columns:minmax(96px,1fr) 2.4fr auto; gap:10px;
+            align-items:center; padding:7px 0; border-bottom:1px solid var(--border); }
+  .an-row:last-child { border-bottom:0; }
+  .an-cat { font-size:.8rem; font-weight:600; }
+  .an-cat small { display:block; font-weight:400; color:var(--muted); font-size:.7rem; }
+  .an-barra { position:relative; height:16px; background:#f1f5f9; border-radius:4px; }
+  .an-barra i { position:absolute; top:0; bottom:0; border-radius:3px; }
+  .an-barra .eje { position:absolute; top:-2px; bottom:-2px; left:50%; width:1px; background:#cbd5e1; }
+  .an-val { font-size:.8rem; font-weight:700; text-align:right; font-variant-numeric:tabular-nums;
+            white-space:nowrap; }
+  .an-lista { list-style:none; }
+  .an-lista li { display:flex; justify-content:space-between; gap:10px; padding:6px 0;
+                 border-bottom:1px solid var(--border); font-size:.8rem; }
+  .an-lista li:last-child { border-bottom:0; }
+  .an-lista .n { color:var(--muted); font-size:.72rem; }
+  .consejo { display:flex; gap:11px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .consejo:last-child { border-bottom:0; }
+  .consejo .ico { flex:none; width:26px; height:26px; border-radius:7px; display:flex;
+                  align-items:center; justify-content:center; font-size:.85rem; }
+  .consejo h4 { font-size:.85rem; margin-bottom:3px; }
+  .consejo p { font-size:.79rem; color:var(--muted); line-height:1.45; }
+  .consejo b { color:var(--text); }
+
+  /* Barra de busqueda y orden sobre las tablas */
+  .tbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .buscar, .orden { font-size:.82rem; padding:8px 10px; border:1px solid var(--border);
+                    border-radius:8px; background:#fff; color:var(--text); font-family:inherit; }
+  .buscar { flex:1 1 220px; min-width:0; }
+  .buscar:focus, .orden:focus { outline:2px solid var(--blue); outline-offset:-1px; }
+  .orden { cursor:pointer; }
+  .vermas { text-align:center; margin-top:10px; }
+  .vermas button { font-size:.78rem; padding:7px 16px; border:1px solid var(--border);
+                   border-radius:99px; background:#fff; color:var(--navy); cursor:pointer; font-weight:600; }
+
   table { width:100%; border-collapse:collapse; font-size:.79rem; }
   thead th { background:var(--navy); color:#fff; padding:8px 9px; text-align:left; font-size:.7rem; text-transform:uppercase; }
   tbody tr:nth-child(even){ background:#f8fafc; }
@@ -104,6 +146,7 @@
   <div class="tabs">
     <button class="tab on" id="tab-rt">Mes en curso</button>
     <button class="tab" id="tab-of">Cierre mensual</button>
+    <button class="tab" id="tab-an">Análisis</button>
   </div>
 
   <!-- ===================== VISTA 1: MES EN CURSO ===================== -->
@@ -183,7 +226,15 @@
     </div>
 
     <div class="card-full">
-      <div class="card-title">Últimas transacciones <span id="rt-n" style="color:var(--muted);font-weight:400"></span></div>
+      <div class="card-title">Detalle de movimientos <span id="rt-n" style="color:var(--muted);font-weight:400"></span></div>
+      <div class="tbar">
+        <input id="rt-buscar" class="buscar" type="search" placeholder="Buscar comercio o categoría…" autocomplete="off">
+        <select id="rt-orden" class="orden">
+          <option value="fecha">Más recientes primero</option>
+          <option value="mayor">Mayor monto primero</option>
+          <option value="menor">Menor monto primero</option>
+        </select>
+      </div>
       <div style="overflow-x:auto">
         <table>
           <thead><tr>
@@ -193,6 +244,7 @@
           <tbody id="rt-feed"></tbody>
         </table>
       </div>
+      <div id="rt-mas" class="vermas"></div>
     </div>
   </main>
 
@@ -279,6 +331,28 @@
     </div>
 
     <div class="card-full">
+      <div class="card-title">Detalle de movimientos <span id="of-n" style="color:var(--muted);font-weight:400"></span></div>
+      <div class="tbar">
+        <input id="of-buscar" class="buscar" type="search" placeholder="Buscar comercio o categoría…" autocomplete="off">
+        <select id="of-orden" class="orden">
+          <option value="fecha">Más recientes primero</option>
+          <option value="mayor">Mayor monto primero</option>
+          <option value="menor">Menor monto primero</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Fecha</th><th>Comercio</th><th>Categoría</th><th>Tarjeta</th>
+            <th>Tipo</th><th>Cuota</th><th style="text-align:right">Cargo del mes</th>
+          </tr></thead>
+          <tbody id="of-movs"></tbody>
+        </table>
+      </div>
+      <div id="of-mas" class="vermas"></div>
+    </div>
+
+    <div class="card-full">
       <div class="card-title">Detalle de cuotas pendientes</div>
       <div style="overflow-x:auto">
         <table>
@@ -291,6 +365,48 @@
       </div>
     </div>
   </main>
+
+  <!-- ===================== VISTA 3: ANÁLISIS ===================== -->
+  <main id="vista-an" style="display:none">
+    <div class="aviso">Lectura automática de tus últimos 6 meses. Compara el mes en curso contra
+      tu propio promedio, no contra un presupuesto teórico.</div>
+
+    <div class="card-full" id="an-veredicto-card">
+      <div class="an-hero">
+        <div class="an-hero-txt">
+          <div class="kpi-label">Ritmo del mes</div>
+          <div class="an-hero-num" id="an-veredicto">&mdash;</div>
+          <div class="an-hero-sub" id="an-veredicto-sub">&mdash;</div>
+        </div>
+        <div class="an-hero-chart"><canvas id="chAnRitmo"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Dónde se está yendo la diferencia</div>
+      <p class="an-nota">Gasto del mes en curso contra tu promedio de los meses anteriores,
+        ajustado al día <span id="an-dia">—</span>. En rojo lo que va por sobre tu costumbre.</p>
+      <div id="an-desvios"></div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title">Gastos hormiga</div>
+        <p class="an-nota">Compras chicas y frecuentes. Suman más de lo que parecen.</p>
+        <div id="an-hormiga"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Comercios que más te cuestan</div>
+        <p class="an-nota">Los 6 con mayor gasto acumulado en el mes.</p>
+        <div id="an-comercios"></div>
+      </div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Qué haría yo con estos números</div>
+      <div id="an-consejos"></div>
+    </div>
+  </main>
 </div>
 
 <script>
@@ -298,6 +414,13 @@ const ITER = 200000;
 const clp  = n => "$" + Math.round(n || 0).toLocaleString("es-CL");
 const clpN = n => (n === null || n === undefined) ? "Sin datos" : clp(n);
 const COLORS = ["#2563eb","#10b981","#f59e0b","#ef4444","#7c3aed","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1"];
+// Paleta categorica validada (separacion suficiente para daltonismo). El orden
+// es fijo: el color va amarrado a la categoria, nunca a su puesto en el ranking.
+const PALETA = ["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#008300"];
+const GRIS_RESTO = "#9ca3af";     // el cajon "resto" es recesivo a proposito
+const RESTO = " resto";      // clave interna, no colisiona con una categoria real
+let TOP_CATS = [];                // top 6 del periodo, fijado al cargar los datos
+let TOP_CATS_OF = [];             // idem para la vista oficial
 let DATA = null;
 const charts = {};
 const filtros = { "rt-mes":"", "rt-origen":"todos", "rt-tipo":"todos", "rt-tarjeta":"todas",
@@ -307,26 +430,38 @@ const NOM_MEDIO = { Credito:"Crédito", Debito:"Débito", Transferencia:"Transfe
 const MES_ABR = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const mesLabel = k => MES_ABR[parseInt(k.slice(5,7),10) - 1] + " " + k.slice(2,4);
 
-// Series apiladas por mes. `clave(m)` define la serie; con topN el resto se
-// agrupa en "Otros". Devuelve datasets listos para Chart.js.
-function apilarPorMes(rows, meses, clave, topN, colores) {
-  const tot = {};
-  rows.forEach(m => { const k = clave(m); tot[k] = (tot[k] || 0) + m.monto; });
-  let series = Object.keys(tot).sort((a,b) => tot[b] - tot[a]);
-  let resto = [];
-  if (topN && series.length > topN) { resto = series.slice(topN); series = series.slice(0, topN); }
-  const conOtros = resto.length ? series.concat(["Otros"]) : series;
-  const agg = {};
+// Series apiladas por mes. `clave(m)` define la serie.
+// `topFijo` es la lista de series con color propio, calculada UNA vez sobre el
+// total del periodo: el color sigue a la categoria, no a su posicion en el
+// ranking, asi al filtrar no se repintan las que quedan.
+// Todo lo que no esta en esa lista cae en un cajon gris rotulado con su nombre
+// real ("Otras N categorias"), para no confundirlo con la categoria "Otros".
+function apilarPorMes(rows, meses, clave, topFijo, colores) {
+  const fijas = topFijo || [];
+  const agg = {}, vistas = new Set();
   rows.forEach(m => {
-    const k = series.includes(clave(m)) ? clave(m) : "Otros";
+    const k0 = clave(m);
+    const k = fijas.includes(k0) ? k0 : RESTO;
+    if (k === RESTO) vistas.add(k0);
     agg[m.mes + "|" + k] = (agg[m.mes + "|" + k] || 0) + m.monto;
   });
-  return conOtros.map((k, i) => ({
-    label: k,
+  const series = fijas.filter(k => meses.some(mm => agg[mm + "|" + k]));
+  if (vistas.size) series.push(RESTO);
+  return series.map((k, i) => ({
+    label: k === RESTO ? "Otras " + vistas.size + " categorías" : k,
     data: meses.map(mm => agg[mm + "|" + k] || 0),
-    backgroundColor: (colores && colores[k]) || COLORS[i % COLORS.length],
-    borderRadius: 3
+    backgroundColor: k === RESTO ? GRIS_RESTO
+                     : (colores && colores[k]) || PALETA[fijas.indexOf(k) % PALETA.length],
+    borderColor: "#fff", borderWidth: 2, borderRadius: 3
   }));
+}
+
+// Las 6 categorias mas grandes del periodo completo (sin filtros). Se calcula
+// una sola vez al cargar los datos y fija el color de cada una.
+function topCategorias(rows, n) {
+  const tot = {};
+  rows.forEach(m => { tot[m.cat || "Otros"] = (tot[m.cat || "Otros"] || 0) + m.monto; });
+  return Object.keys(tot).sort((a,b) => tot[b] - tot[a]).slice(0, n);
 }
 
 function chartApilado(id, labels, datasets) {
@@ -365,7 +500,13 @@ function mostrar(datos) {
   document.getElementById("app").style.display = "block";
   document.getElementById("genDate").textContent = DATA.generado_en;
   document.getElementById("titular").textContent = DATA.titular ? DATA.titular + " — " : "";
-  initFiltros(); renderRT(); renderOF();
+  // El color de cada categoria se fija aqui, sobre el total del periodo y sin
+  // filtros aplicados, para que no cambie al filtrar.
+  const o = DATA.on_time || {}, ex = DATA.oficial_extra || {};
+  const mesesRT = (o.meses || []).map(x => x.v);
+  TOP_CATS = topCategorias((o.feed || []).filter(m => m.gasto && mesesRT.indexOf(m.mes) >= 0), 6);
+  TOP_CATS_OF = topCategorias(ex.movs || [], 6);
+  initFiltros(); renderRT(); renderOF(); renderAN();
 }
 
 async function entrar(frase) {
@@ -406,6 +547,13 @@ function initFiltros() {
         [{v:"todos", label:"Todos"}].concat((ex.meses || []).map(m => ({v:m.v, label:m.label}))),
         "todos");
 }
+
+// Buscar y ordenar: al escribir se vuelve al tope inicial de filas
+["rt", "of"].forEach(p => {
+  const re = () => { estadoTabla[p].tope = 50; p === "rt" ? renderRT() : renderOF(); };
+  document.addEventListener("input",  e => { if (e.target.id === p + "-buscar") re(); });
+  document.addEventListener("change", e => { if (e.target.id === p + "-orden")  re(); });
+});
 
 document.addEventListener("click", e => {
   const b = e.target.closest(".chip");
@@ -496,30 +644,72 @@ function renderRT() {
   document.getElementById("rt-tend-nota").textContent =
     meses[meses.length-1] === o.mes_actual ? "· el último mes va en curso" : "";
   chartApilado("chRtTendencia", etiquetas,
-    apilarPorMes(hist, meses, m => m.medio || "Otro", 0, COL_MEDIO)
+    apilarPorMes(hist, meses, m => m.medio || "Otro", ["Credito","Debito","Transferencia"], COL_MEDIO)
       .map(d => Object.assign(d, {label: NOM_MEDIO[d.label] || d.label})));
   chartApilado("chRtCatMes", etiquetas,
-    apilarPorMes(hist, meses, m => m.cat || "Otros", 6));
+    apilarPorMes(hist, meses, m => m.cat || "Otros", TOP_CATS));
 
-  const tb = document.getElementById("rt-feed");
-  document.getElementById("rt-n").textContent = "(" + movs.length + ")";
-  tb.innerHTML = movs.length ? "" : '<tr><td colspan="7" class="vacio">Sin movimientos con este filtro.</td></tr>';
-  movs.slice(0, 50).forEach(m => {
-    const esCuotas = m.medio === "Credito" && m.cuotas > 0;
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      "<td>" + m.fecha + (m.hora ? " <span style='color:var(--muted)'>" + m.hora + "</span>" : "") + "</td>" +
-      "<td style='font-weight:600'>" + m.desc + "</td>" +
-      "<td><span class='tag-cat'>" + m.cat + "</span></td>" +
-      "<td>" + m.medio + "</td>" +
-      "<td>" + (m.tarjeta ? "••" + m.tarjeta : "—") + "</td>" +
-      "<td>" + (m.medio !== "Credito" ? "—" :
-        (esCuotas ? "<span class='badge b-cuotas'>" + m.cuotas + " cuotas</span>"
-                  : "<span class='badge b-contado'>Contado</span>")) + "</td>" +
-      "<td class='num' style='font-weight:600'>" + clp(m.monto) + "</td>";
-    tb.appendChild(tr);
+  pintarTabla({
+    filas: ordenarBuscar(movs, "rt"), cuerpo: "rt-feed", contador: "rt-n",
+    mas: "rt-mas", cols: 7, estado: estadoTabla.rt,
+    fila: m => {
+      const esCuotas = m.medio === "Credito" && m.cuotas > 0;
+      return "<td>" + m.fecha + (m.hora ? " <span style='color:var(--muted)'>" + m.hora + "</span>" : "") + "</td>" +
+        "<td style='font-weight:600'>" + esc(m.desc) + "</td>" +
+        "<td><span class='tag-cat'>" + esc(m.cat) + "</span></td>" +
+        "<td>" + esc(m.medio) + "</td>" +
+        "<td>" + (m.tarjeta ? "••" + esc(m.tarjeta) : "—") + "</td>" +
+        "<td>" + (m.medio !== "Credito" ? "—" :
+          (esCuotas ? "<span class='badge b-cuotas'>" + m.cuotas + " cuotas</span>"
+                    : "<span class='badge b-contado'>Contado</span>")) + "</td>" +
+        "<td class='num' style='font-weight:600'>" + clp(m.monto) + "</td>";
+    }
   });
 }
+
+// ── Tablas: búsqueda, orden y "ver más" ────────────────────────────
+const estadoTabla = { rt: {tope: 50}, of: {tope: 50} };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function ordenarBuscar(filas, pref) {
+  const q = (document.getElementById(pref + "-buscar").value || "").trim().toLowerCase();
+  const orden = document.getElementById(pref + "-orden").value;
+  let out = q ? filas.filter(m => (m.desc + " " + m.cat).toLowerCase().includes(q)) : filas.slice();
+  if (orden === "mayor") out.sort((a,b) => b.monto - a.monto);
+  else if (orden === "menor") out.sort((a,b) => a.monto - b.monto);
+  return out;   // "fecha" conserva el orden original (ya viene por fecha desc)
+}
+
+function pintarTabla({filas, cuerpo, contador, mas, cols, estado, fila}) {
+  const tb = document.getElementById(cuerpo);
+  const total = filas.reduce((a,m) => a + m.monto, 0);
+  document.getElementById(contador).textContent =
+    "(" + filas.length + " · " + clp(total) + ")";
+  tb.innerHTML = "";
+  if (!filas.length) {
+    tb.innerHTML = '<tr><td colspan="' + cols + '" class="vacio">Sin movimientos con este filtro.</td></tr>';
+    document.getElementById(mas).innerHTML = "";
+    return;
+  }
+  filas.slice(0, estado.tope).forEach(m => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = fila(m);
+    tb.appendChild(tr);
+  });
+  const cont = document.getElementById(mas);
+  if (filas.length > estado.tope) {
+    cont.innerHTML = "<button>Ver " + Math.min(100, filas.length - estado.tope) +
+                     " más (de " + filas.length + ")</button>";
+    cont.firstChild.onclick = () => { estado.tope += 100; render(); };
+  } else {
+    cont.innerHTML = filas.length > 50
+      ? "<button>Mostrar menos</button>" : "";
+    if (cont.firstChild) cont.firstChild.onclick = () => { estado.tope = 50; render(); };
+  }
+}
+
+function render() { renderRT(); renderOF(); }
 
 // ── VISTA 2: cierre mensual ────────────────────────────────────────
 function renderOF() {
@@ -570,7 +760,7 @@ function renderOF() {
   });
 
   chartApilado("chOfCatMes", meses.map(mesLabel),
-    apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses, m => m.cat || "Otros", 6));
+    apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses, m => m.cat || "Otros", TOP_CATS_OF));
 
   if (DATA.cc_mensual.labels.length) {
     chart("chartCC", {
@@ -597,6 +787,20 @@ function renderOF() {
     });
   }
 
+  pintarTabla({
+    filas: ordenarBuscar(movs, "of"), cuerpo: "of-movs", contador: "of-n",
+    mas: "of-mas", cols: 7, estado: estadoTabla.of,
+    fila: m =>
+      "<td>" + m.fecha + "</td>" +
+      "<td style='font-weight:600'>" + esc(m.desc) + "</td>" +
+      "<td><span class='tag-cat'>" + esc(m.cat) + "</span></td>" +
+      "<td>" + (m.tarjeta ? "••" + esc(m.tarjeta) : "—") + "</td>" +
+      "<td>" + (m.tipo === "Cuotas" ? "<span class='badge b-cuotas'>Cuotas</span>"
+                                    : "<span class='badge b-contado'>Contado</span>") + "</td>" +
+      "<td>" + esc(m.cuota || "—") + "</td>" +
+      "<td class='num' style='font-weight:600'>" + clp(m.monto) + "</td>"
+  });
+
   const tb = document.getElementById("tablaCuotasBody");
   tb.innerHTML = "";
   const filas = (DATA.cuotas_tabla || []);
@@ -617,19 +821,187 @@ function renderOF() {
   });
 }
 
+// ── VISTA 3: análisis ──────────────────────────────────────────────
+// Todo se compara contra el propio historial del usuario, prorrateado al día
+// del mes: comparar un mes a medias contra meses completos siempre "aprueba".
+function analizar() {
+  const o = DATA.on_time || {};
+  if (!o.disponible || !o.feed) return null;
+  const meses = (o.meses || []).map(m => m.v).sort();
+  const previos = meses.filter(m => m !== o.mes_actual);
+  if (!previos.length) return null;
+
+  const gasto = o.feed.filter(m => m.gasto);
+  const delMes = gasto.filter(m => m.mes === o.mes_actual);
+  const prop = o.dia / o.dias_mes;                       // fracción del mes transcurrida
+
+  // Promedio mensual por categoría en los meses anteriores
+  const porCat = {}, catsPrev = {};
+  delMes.forEach(m => { porCat[m.cat] = (porCat[m.cat] || 0) + m.monto; });
+  gasto.filter(m => previos.includes(m.mes))
+       .forEach(m => { catsPrev[m.cat] = (catsPrev[m.cat] || 0) + m.monto; });
+
+  const desvios = Object.keys(Object.assign({}, porCat, catsPrev)).map(cat => {
+    const real = porCat[cat] || 0;
+    const esperado = (catsPrev[cat] || 0) / previos.length * prop;
+    return {cat, real, esperado, dif: real - esperado};
+  }).filter(d => Math.abs(d.dif) >= 5000)
+    .sort((a,b) => b.dif - a.dif);
+
+  // Gastos hormiga: comercios con >=4 compras chicas en el mes
+  const porCom = {};
+  delMes.forEach(m => {
+    const k = m.desc.toUpperCase().slice(0, 20);
+    (porCom[k] = porCom[k] || {desc: m.desc, n: 0, monto: 0, cat: m.cat});
+    porCom[k].n++; porCom[k].monto += m.monto;
+  });
+  const comercios = Object.values(porCom);
+  const hormiga = comercios.filter(c => c.n >= 4 && c.monto / c.n <= 15000)
+                           .sort((a,b) => b.monto - a.monto).slice(0, 6);
+  const top = comercios.sort((a,b) => b.monto - a.monto).slice(0, 6);
+
+  const totalPrev = previos.reduce((a,mm) =>
+    a + gasto.filter(m => m.mes === mm).reduce((s,m) => s + m.monto, 0), 0) / previos.length;
+  const esperadoHoy = totalPrev * prop;
+  const real = delMes.reduce((a,m) => a + m.monto, 0);
+
+  return {meses, previos, real, esperadoHoy, promedioMes: totalPrev,
+          proyectado: prop > 0 ? real / prop : 0, desvios, hormiga, top,
+          serie: meses.map(mm => gasto.filter(m => m.mes === mm)
+                                      .reduce((s,m) => s + m.monto, 0))};
+}
+
+function renderAN() {
+  const a = analizar();
+  const cont = document.getElementById("an-desvios");
+  if (!a) {
+    cont.innerHTML = '<p class="vacio">Se necesita al menos un mes anterior completo para comparar.</p>';
+    return;
+  }
+  const o = DATA.on_time;
+  const dif = a.real - a.esperadoHoy;
+  const pct = a.esperadoHoy ? dif / a.esperadoHoy * 100 : 0;
+  const alto = pct > 10, bajo = pct < -10;
+
+  document.getElementById("an-veredicto").textContent =
+    (dif >= 0 ? "+" : "−") + clp(Math.abs(dif)).slice(1);
+  document.getElementById("an-veredicto").style.color =
+    alto ? "var(--red)" : bajo ? "var(--green)" : "var(--text)";
+  // Con pocos días corridos una sola compra grande distorsiona la proyección:
+  // se dice, en vez de presentarla como si fuera un pronóstico firme.
+  const temprano = o.dia <= 7;
+  document.getElementById("an-veredicto-sub").innerHTML =
+    (alto ? "Vas <b>sobre</b> tu ritmo habitual" : bajo ? "Vas <b>bajo</b> tu ritmo habitual"
+          : "Vas <b>en línea</b> con tu ritmo habitual") +
+    " (" + (pct >= 0 ? "+" : "") + pct.toFixed(0) + "%). " +
+    (temprano
+      ? "Van solo " + o.dia + " días, así que la proyección a fin de mes (" + clp(a.proyectado) +
+        ") todavía es ruidosa: una compra grande la mueve entera. Tu promedio mensual es " +
+        clp(a.promedioMes) + "."
+      : "A este paso cierras el mes en <b>" + clp(a.proyectado) +
+        "</b>, contra un promedio de " + clp(a.promedioMes) + ".");
+  document.getElementById("an-veredicto-card").style.borderTop =
+    "4px solid " + (alto ? "var(--red)" : bajo ? "var(--green)" : "var(--blue)");
+  document.getElementById("an-dia").textContent = o.dia + " de " + o.dias_mes;
+
+  // Sparkline del gasto mensual, con el mes en curso destacado
+  chart("chAnRitmo", {
+    type:"bar",
+    data:{ labels:a.meses.map(mesLabel), datasets:[{
+      data:a.serie,
+      backgroundColor:a.meses.map(m => m === o.mes_actual ? "#2a78d6" : "#dbe3ea"),
+      borderRadius:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label:c => " " + clp(c.raw) } } },
+      scales:{ x:{ grid:{display:false}, ticks:{font:{size:10}} },
+               y:{ display:false } } }
+  });
+
+  // Desvíos por categoría: barra divergente respecto del promedio
+  const tope = Math.max(...a.desvios.map(d => Math.abs(d.dif)), 1);
+  cont.innerHTML = a.desvios.length ? "" :
+    '<p class="vacio">Ninguna categoría se desvía más de $5.000 de tu promedio.</p>';
+  a.desvios.slice(0, 8).forEach(d => {
+    const w = Math.abs(d.dif) / tope * 50;          // 50% = media barra
+    const sobre = d.dif > 0;
+    const div = document.createElement("div");
+    div.className = "an-row";
+    div.innerHTML =
+      "<div class='an-cat'>" + esc(d.cat) +
+        "<small>" + clp(d.real) + " vs " + clp(d.esperado) + " habitual</small></div>" +
+      "<div class='an-barra'><span class='eje'></span><i style='" +
+        (sobre ? "left:50%;width:" + w + "%;background:#e34948"
+               : "right:50%;width:" + w + "%;background:#1baf7a") + "'></i></div>" +
+      "<div class='an-val' style='color:" + (sobre ? "var(--red)" : "var(--green)") + "'>" +
+        (sobre ? "+" : "−") + clp(Math.abs(d.dif)).slice(1) + "</div>";
+    cont.appendChild(div);
+  });
+
+  const lista = (id, items, vacio) => {
+    const el = document.getElementById(id);
+    if (!items.length) { el.innerHTML = '<p class="vacio">' + vacio + "</p>"; return; }
+    el.innerHTML = "<ul class='an-lista'>" + items.map(c =>
+      "<li><span>" + esc(c.desc.slice(0, 26)) + "<span class='n'> · " + c.n +
+      (c.n === 1 ? " compra" : " compras") + "</span></span>" +
+      "<b>" + clp(c.monto) + "</b></li>").join("") + "</ul>";
+  };
+  lista("an-hormiga", a.hormiga, "Sin compras chicas repetidas este mes. Bien ahí.");
+  lista("an-comercios", a.top, "Aún no hay movimientos este mes.");
+
+  // Consejos: se arman desde los propios números, no son genéricos
+  const c = [];
+  const peor = a.desvios[0];
+  if (peor && peor.dif > 0)
+    c.push(["🎯", "var(--red)", "Ataca primero " + peor.cat,
+      "Es tu mayor desvío: <b>" + clp(peor.dif) + "</b> sobre lo habitual. Volver a tu promedio en esta sola categoría corrige el " +
+      Math.min(100, Math.round(peor.dif / Math.max(dif, 1) * 100)) + "% de la desviación del mes."]);
+  if (a.hormiga.length) {
+    const th = a.hormiga.reduce((s,x) => s + x.monto, 0);
+    const tn = a.hormiga.reduce((s,x) => s + x.n, 0);
+    c.push(["🐜", "var(--amber)", "Las compras chicas suman " + clp(th),
+      tn + " compras de menos de $15.000 en " + a.hormiga.length + " comercios. " +
+      "Individualmente no duelen; juntas son el <b>" + Math.round(th / Math.max(a.real,1) * 100) +
+      "%</b> de tu gasto del mes. Fijar un tope semanal para estas es más fácil que recortar una compra grande."]);
+  }
+  const k = DATA.kpis || {};
+  if (k.cuota_proximo_mes && k.ingresos_cc) {
+    const carga = k.cuota_proximo_mes / k.ingresos_cc * 100;
+    c.push([carga > 25 ? "⚠️" : "💳", carga > 25 ? "var(--red)" : "var(--blue)",
+      "Tus cuotas comprometen el " + carga.toFixed(0) + "% de tus ingresos",
+      "El próximo mes pagas <b>" + clp(k.cuota_proximo_mes) + "</b> en cuotas ya comprometidas sobre ingresos de " +
+      clp(k.ingresos_cc) + ". " + (carga > 25
+        ? "Sobre 25% es zona de riesgo: cada compra nueva en cuotas reduce tu margen de maniobra. Evita sumar planes nuevos hasta bajar de ahí."
+        : "Está en un rango manejable. El punto a cuidar es no sumar planes largos que estiren el compromiso más allá de 6 meses.")]);
+  }
+  const ahorro = a.desvios.filter(d => d.dif < 0);
+  if (ahorro.length)
+    c.push(["✅", "var(--green)", "Lo que sí está funcionando",
+      "Bajaste en " + ahorro.slice(0,3).map(d => "<b>" + esc(d.cat) + "</b>").join(", ") +
+      ", con " + clp(Math.abs(ahorro.reduce((s,d) => s + d.dif, 0))) +
+      " menos que tu promedio. Eso ya está compensando parte del exceso."]);
+  if (!alto && !bajo)
+    c.push(["📊", "var(--blue)", "Mes sin sobresaltos",
+      "Vas dentro del 10% de tu comportamiento normal. El mejor uso de este mes es revisar si tu " +
+      "promedio de " + clp(a.promedioMes) + " es el nivel al que <b>quieres</b> gastar, no solo al que sueles."]);
+
+  document.getElementById("an-consejos").innerHTML = c.map(([ico, col, tit, txt]) =>
+    "<div class='consejo'><div class='ico' style='background:" + col + "22;color:" + col + "'>" +
+    ico + "</div><div><h4>" + tit + "</h4><p>" + txt + "</p></div></div>").join("");
+}
+
 // ── Tabs ───────────────────────────────────────────────────────────
-document.getElementById("tab-rt").onclick = () => {
-  document.getElementById("tab-rt").classList.add("on");
-  document.getElementById("tab-of").classList.remove("on");
-  document.getElementById("vista-rt").style.display = "block";
-  document.getElementById("vista-of").style.display = "none";
-};
-document.getElementById("tab-of").onclick = () => {
-  document.getElementById("tab-of").classList.add("on");
-  document.getElementById("tab-rt").classList.remove("on");
-  document.getElementById("vista-of").style.display = "block";
-  document.getElementById("vista-rt").style.display = "none";
-};
+const VISTAS = ["rt", "of", "an"];
+VISTAS.forEach(v => {
+  document.getElementById("tab-" + v).onclick = () => {
+    VISTAS.forEach(x => {
+      document.getElementById("tab-" + x).classList.toggle("on", x === v);
+      document.getElementById("vista-" + x).style.display = x === v ? "block" : "none";
+    });
+    // Chart.js necesita re-medir al mostrarse un contenedor que estaba oculto
+    if (v === "an") renderAN();
+  };
+});
 
 // ── Arranque ───────────────────────────────────────────────────────
 document.getElementById("btn").onclick = () =>
