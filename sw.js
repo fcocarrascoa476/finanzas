@@ -1,4 +1,4 @@
-const CACHE = "finanzas-v8";
+const CACHE = "finanzas-v9";
 const SHELL = ["./index.html", "./chart.min.js", "./manifest.webmanifest",
                "./icono-192.png", "./icono-512.png"];
 
