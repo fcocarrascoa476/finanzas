@@ -165,14 +165,24 @@
         <div class="kpi-sub" id="rt-tend-sub">&mdash;</div>
       </div>
       <div class="kpi-card teal">
-        <div class="kpi-label">Contado (crédito)</div>
+        <div class="kpi-label">Contado TC</div>
         <div class="kpi-value" id="rt-contado">&mdash;</div>
-        <div class="kpi-sub">compras en 1 cuota</div>
+        <div class="kpi-sub">crédito en 1 cuota</div>
       </div>
       <div class="kpi-card purple">
         <div class="kpi-label">En cuotas (crédito)</div>
         <div class="kpi-value" id="rt-cuotas">&mdash;</div>
         <div class="kpi-sub">monto total comprado</div>
+      </div>
+      <div class="kpi-card" style="border-color:#0891b2">
+        <div class="kpi-label">Contado Débito</div>
+        <div class="kpi-value" id="rt-debito">&mdash;</div>
+        <div class="kpi-sub">sale de la cuenta al instante</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Transferencias</div>
+        <div class="kpi-value" id="rt-transf">&mdash;</div>
+        <div class="kpi-sub">enviadas a terceros</div>
       </div>
     </div>
 
@@ -194,7 +204,9 @@
         <span class="lbl">Tipo</span>
         <div class="fchips">
           <button class="chip on" data-f="rt-tipo" data-v="todos">Todos</button>
-          <button class="chip" data-f="rt-tipo" data-v="contado">Contado</button>
+          <button class="chip" data-f="rt-tipo" data-v="contado">Contado (TC + déb.)</button>
+          <button class="chip" data-f="rt-tipo" data-v="contado_tc">Contado TC</button>
+          <button class="chip" data-f="rt-tipo" data-v="contado_deb">Contado Débito</button>
           <button class="chip" data-f="rt-tipo" data-v="cuotas">En cuotas</button>
         </div>
       </div>
@@ -206,7 +218,7 @@
 
     <div class="chart-grid">
       <div class="card">
-        <div class="card-title">Contado vs Cuotas</div>
+        <div class="card-title">Cómo se pagó</div>
         <div class="chart-wrap-sm"><canvas id="chRtTipo"></canvas></div>
       </div>
       <div class="card">
@@ -325,6 +337,12 @@
     <div class="card-full">
       <div class="card-title">Evolución por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· top 6 + otros (tarjeta)</span></div>
       <div class="chart-wrap"><canvas id="chOfCatMes"></canvas></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Saldo de la cuenta corriente al cierre de cada mes</div>
+      <p class="an-nota" id="of-saldo-nota"></p>
+      <div class="chart-wrap"><canvas id="chartSaldo"></canvas></div>
     </div>
 
     <div class="card-full">
@@ -648,8 +666,12 @@ function renderRT() {
     if (meses.indexOf(m.mes) < 0) return false;
     if (org !== "todos" && m.medio !== org) return false;
     if (tar !== "todas" && m.tarjeta !== tar) return false;
-    if (tipo === "contado" && !(m.medio === "Credito" && m.cuotas === 0)) return false;
-    if (tipo === "cuotas"  && !(m.medio === "Credito" && m.cuotas > 0))  return false;
+    const contadoTC  = m.medio === "Credito" && m.cuotas === 0;
+    const contadoDeb = m.medio === "Debito";
+    if (tipo === "contado"     && !(contadoTC || contadoDeb)) return false;
+    if (tipo === "contado_tc"  && !contadoTC)  return false;
+    if (tipo === "contado_deb" && !contadoDeb) return false;
+    if (tipo === "cuotas" && !(m.medio === "Credito" && m.cuotas > 0)) return false;
     return true;
   });
   const movs = mes === "todos" ? hist : hist.filter(m => m.mes === mes);
@@ -676,20 +698,32 @@ function renderRT() {
     cardT.style.borderTopColor = "var(--muted)";
   }
 
-  // Contado/cuotas recalculado sobre lo filtrado (solo aplica a crédito)
-  const cc = {contado:0, cuotas:0};
-  movs.forEach(m => { if (m.medio === "Credito") {
-    if (m.cuotas > 0) cc.cuotas += m.monto; else cc.contado += m.monto; } });
-  document.getElementById("rt-contado").textContent = clp(cc.contado);
+  // Desglose recalculado sobre lo filtrado. El débito también es compra al
+  // contado, pero se muestra aparte del contado con crédito: son bolsillos
+  // distintos aunque los dos se paguen ahora.
+  const cc = {tc:0, deb:0, cuotas:0, transf:0};
+  movs.forEach(m => {
+    if (m.medio === "Credito") { m.cuotas > 0 ? cc.cuotas += m.monto : cc.tc += m.monto; }
+    else if (m.medio === "Debito") cc.deb += m.monto;
+    else if (m.medio === "Transferencia") cc.transf += m.monto;
+  });
+  document.getElementById("rt-contado").textContent = clp(cc.tc);
   document.getElementById("rt-cuotas").textContent  = clp(cc.cuotas);
+  document.getElementById("rt-debito").textContent  = clp(cc.deb);
+  document.getElementById("rt-transf").textContent  = clp(cc.transf);
 
   chart("chRtTipo", {
     type:"doughnut",
-    data:{ labels:["Contado","En cuotas"], datasets:[{ data:[cc.contado, cc.cuotas],
-      backgroundColor:["#0891b2","#7c3aed"], borderWidth:2, borderColor:"#fff" }] },
+    data:{ labels:["Contado TC","Contado Débito","En cuotas","Transferencias"],
+      datasets:[{ data:[cc.tc, cc.deb, cc.cuotas, cc.transf],
+      backgroundColor:["#2a78d6","#00a0b0","#7c3aed","#eda100"],
+      borderWidth:2, borderColor:"#fff" }] },
     options:{ responsive:true, maintainAspectRatio:false, cutout:"58%",
       plugins:{ legend:{position:"bottom", labels:{font:{size:11}}},
-        tooltip:{ callbacks:{ label:c => " " + c.label + ": " + clp(c.raw) } } } }
+        tooltip:{ callbacks:{
+          label:c => " " + c.label + ": " + clp(c.raw),
+          footer:it => { const t = cc.tc + cc.deb;
+            return it[0].dataIndex <= 1 ? "Contado total: " + clp(t) : ""; } } } } }
   });
 
   // Categorías: recalculadas sobre lo filtrado
@@ -854,6 +888,34 @@ function renderOF() {
 
   chartApilado("chOfCatMes", meses.map(mesLabel),
     apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses, m => m.cat || "Otros", TOP_CATS_OF));
+
+  // Saldo al cierre de cada mes. El punto es el último movimiento cargado de
+  // ese mes: si la cartola no llega a fin de mes, el tooltip lo dice.
+  const sal = DATA.cc_saldos || {labels:[], saldos:[], fechas:[]};
+  if (sal.labels.length) {
+    const ult = sal.fechas[sal.fechas.length-1];
+    document.getElementById("of-saldo-nota").textContent =
+      "Saldo que declara el banco al último movimiento de cada mes. Último dato: " + ult + ".";
+    chart("chartSaldo", {
+      type:"line",
+      data:{ labels:sal.labels, datasets:[{
+        label:"Saldo", data:sal.saldos,
+        borderColor:"#2a78d6", backgroundColor:"rgba(42,120,214,.10)",
+        borderWidth:2, fill:true, tension:.25,
+        pointRadius:5, pointHoverRadius:8,
+        pointBackgroundColor:sal.saldos.map(v => v < 0 ? "#e34948" : "#2a78d6"),
+        pointBorderColor:"#fff", pointBorderWidth:2 }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false},
+          tooltip:{ callbacks:{
+            title:it => sal.labels[it[0].dataIndex] + " · al " + sal.fechas[it[0].dataIndex],
+            label:c => " Saldo: " + clp(c.raw),
+            afterLabel:c => { const i = c.dataIndex; if (!i) return "";
+              const d = sal.saldos[i] - sal.saldos[i-1];
+              return (d >= 0 ? "▲ +" : "▼ −") + clp(Math.abs(d)).slice(1) + " vs mes anterior"; } } } },
+        scales:{ x:{ grid:{display:false} }, y:ejeY } }
+    });
+  }
 
   if (DATA.cc_mensual.labels.length) {
     chart("chartCC", {
