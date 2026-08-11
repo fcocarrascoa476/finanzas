@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1e3a5f">
 <link rel="manifest" href="./manifest.webmanifest">
-<title>Finanzas Familiares</title>
+<title>Monitor de Finanzas Personales</title>
 <script src="./chart.min.js"></script>
 <style>
   :root {
@@ -131,7 +131,7 @@
 <body>
 
 <div id="login">
-  <h2>&#128200; Finanzas Familiares</h2>
+  <h2>&#128200; Monitor de Finanzas Personales</h2>
   <p>Ingresa tu frase secreta para ver tus datos.</p>
   <input id="frase" type="password" placeholder="Frase secreta" autocomplete="current-password">
   <button id="btn">Entrar</button>
@@ -140,8 +140,8 @@
 
 <div id="app" style="display:none">
   <header>
-    <h1>&#128200; Finanzas Familiares</h1>
-    <div class="sub"><span id="titular"></span>actualizado <span id="genDate"></span></div>
+    <h1>&#128200; Monitor de Finanzas Personales</h1>
+    <div class="sub"><span id="titular"></span><span id="frescura"></span></div>
   </header>
   <div class="tabs">
     <button class="tab on" id="tab-rt">Mes en curso</button>
@@ -560,7 +560,30 @@ function mostrar(datos) {
   DATA = datos;
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "block";
-  document.getElementById("genDate").textContent = DATA.generado_en;
+  // Frescura de los DATOS, no del archivo. El tablero se regenera aunque la
+  // descarga de correos falle, asi que "actualizado <hoy>" podia mostrarse
+  // sobre datos de hace dias. Se muestra hasta cuando llegan los movimientos y
+  // se avisa fuerte si hay atraso.
+  (function () {
+    const el = document.getElementById("frescura");
+    const atraso = DATA.dias_atraso;
+    // El demo publicado queda congelado en su fecha de publicacion. Mostrarle
+    // "sin movimientos nuevos hace 60 dias" a alguien que solo viene a mirar el
+    // producto no informa nada: se rotula como demostracion y punto.
+    if (DATA.demo) {
+      el.textContent = "Datos de demostración · ningún movimiento es real";
+      return;
+    }
+    if (!DATA.datos_hasta) { el.textContent = "generado " + DATA.generado_en; return; }
+    el.textContent = "datos al " + DATA.datos_hasta + " · generado " + DATA.generado_en;
+    if (atraso !== null && atraso >= 2) {
+      const av = document.createElement("span");
+      av.textContent = " ⚠ sin movimientos nuevos hace " + atraso + " días";
+      av.style.cssText = "background:#e34948;color:#fff;padding:2px 8px;"
+                       + "border-radius:10px;margin-left:8px;font-weight:600";
+      el.appendChild(av);
+    }
+  })();
   document.getElementById("titular").textContent = DATA.titular ? DATA.titular + " — " : "";
   // El color de cada categoria se fija aqui, sobre el total del periodo y sin
   // filtros aplicados, para que no cambie al filtrar.
