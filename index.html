@@ -917,7 +917,18 @@ function renderRW() {
   // Lo primero: ¿hay que mover plata de la inversión a la cuenta?
   // Va arriba de todo porque es lo accionable. Entre enero y marzo la cuenta
   // quedó en negativo tres meses seguidos teniendo 41 millones invertidos.
-  const al = r.alerta || {};
+  // La proyección del mes manda sobre el aviso del próximo pago: mirar solo el
+  // cargo siguiente daba un falso tranquilo cuando lo grande venía el día 26.
+  const mes = r.mes || {};
+  const al = mes.alarma ? {
+    nivel: mes.nivel,
+    mensaje: "Con " + clp(r.saldo_cuenta) + " en la cuenta, el mes cierra en " +
+      clp(mes.minimo.saldo) + " el " + mes.minimo.fecha + ". Rescata " +
+      clp(mes.rescatar) + " de la inversión, pidiéndolo antes del " +
+      mes.pedir_antes_de + " para que alcance a llegar (el saldo baja del mínimo " +
+      "el " + mes.dia_critico + ").",
+    detalle: (r.alerta || {}).detalle,
+  } : (r.alerta || {});
   const box = document.getElementById("rw-alerta");
   if (al.mensaje) {
     box.style.display = "";
@@ -927,9 +938,9 @@ function renderRW() {
     box.style.borderLeftColor = color;
     document.getElementById("rw-alerta-titulo").textContent =
       al.nivel === "urgente" ? "Hay que rescatar de la inversión, hoy"
-      : al.nivel === "atencion" ? "Conviene rescatar de la inversión"
+      : al.nivel === "atencion" ? "Este mes vas a necesitar rescatar"
       : al.nivel === "justo" ? "Alcanza, pero sin margen"
-      : "La cuenta cubre lo que viene";
+      : "La cuenta cubre el mes";
     const msg = document.getElementById("rw-alerta-msg");
     msg.textContent = al.mensaje;
     msg.style.color = al.nivel === "urgente" ? "var(--red)" : "var(--tinta)";
