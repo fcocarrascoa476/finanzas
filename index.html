@@ -119,6 +119,62 @@
     .b-pend{ background:#fef3c7; color:#92400e; }
   .b-nueva{ background:#fef3c7; color:#92400e; } .b-activa{ background:#d1fae5; color:#065f46; }
   .tag-cat { display:inline-block; padding:1px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:.67rem; }
+
+  /* Escenarios de gasto */
+  .esc-panel { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+               gap:12px; margin-top:14px; }
+  .esc-caja { border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .esc-caja.sel { border-color:var(--blue); background:#eff6ff; box-shadow:0 0 0 1px var(--blue) inset; }
+  .esc-tit { font-size:.72rem; font-weight:700; text-transform:uppercase;
+             letter-spacing:.3px; color:var(--muted); }
+  .esc-gasto { font-size:1.28rem; font-weight:800; margin:5px 0 1px; }
+  .esc-meses { font-size:.8rem; color:var(--muted); }
+  .esc-meses b { color:var(--navy); font-size:.92rem; }
+  .esc-rango { background:#f8fafc; border:1px solid var(--border); border-radius:10px;
+               padding:11px 14px; font-size:.82rem; margin-top:12px; }
+
+  /* Donde se va la plata: una barra por comercio */
+  .cm { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px;
+        align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border); }
+  .cm:last-child { border-bottom:0; }
+  .cm-nom { font-weight:600; font-size:.84rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cm-val { font-weight:700; font-size:.86rem; white-space:nowrap; }
+  .cm-barra { grid-column:1/-1; height:7px; border-radius:4px; background:var(--border); overflow:hidden; margin-top:3px; }
+  .cm-barra i { display:block; height:100%; border-radius:4px; }
+  .cm-meta { grid-column:1/-1; font-size:.71rem; color:var(--muted); margin-top:3px; }
+  /* Lo unico y lo fijo se atenuan: no son decisiones que se puedan tomar hoy */
+  .cm.pasivo .cm-nom, .cm.pasivo .cm-val { opacity:.55; font-weight:600; }
+
+  .et { display:inline-block; padding:1px 7px; border-radius:99px; font-size:.66rem;
+        font-weight:600; vertical-align:middle; }
+  .et-rec { background:#dcfce7; color:#166534; }
+  .et-oca { background:#fef3c7; color:#92400e; }
+  .et-uni { background:#e5e7eb; color:#4b5563; }
+  .et-fij { background:#e0e7ff; color:#3730a3; }
+
+  /* El goteo */
+  .goteo-hero { background:linear-gradient(135deg,#fef3c7,#fde68a); border-radius:12px;
+                padding:16px 18px; margin-bottom:14px; }
+  .goteo-num { font-size:2rem; font-weight:800; color:#78350f; line-height:1.1; }
+  .goteo-sub { font-size:.82rem; color:#92400e; margin-top:3px; }
+  .goteo-fila { display:flex; justify-content:space-between; gap:10px; align-items:baseline;
+                padding:6px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+  .goteo-fila:last-child { border-bottom:0; }
+  .goteo-fila b { white-space:nowrap; }
+  .goteo-tick { font-size:.72rem; color:var(--muted); }
+
+  /* Palancas: que hacer y cuanto se gana */
+  .palanca { border:1px solid var(--border); border-radius:10px; padding:13px 15px;
+             margin-bottom:10px; border-left:4px solid var(--blue); }
+  .palanca-cab { display:flex; justify-content:space-between; gap:12px; align-items:baseline; flex-wrap:wrap; }
+  .palanca-tit { font-weight:700; font-size:.92rem; }
+  .palanca-gana { font-weight:800; color:var(--green); font-size:.92rem; white-space:nowrap; }
+  .palanca-cifras { font-size:.78rem; color:var(--muted); margin:6px 0 7px; }
+  .palanca-cifras b { color:var(--navy); }
+  .palanca-como { font-size:.79rem; line-height:1.5; }
+  .palanca-total { background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px;
+                   padding:13px 15px; font-size:.88rem; color:#065f46; margin-top:4px; }
+  .palanca-total b { font-size:1.05rem; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
   .vacio { color:var(--muted); text-align:center; padding:26px; font-size:.85rem; }
 
@@ -524,6 +580,74 @@
     </div>
 
     <div class="card-full">
+      <div class="card-title">En qué se divide tu gasto</div>
+      <p class="an-nota">No todo lo que no está comprometido es una decisión libre.
+        Nadie decide dejar de comer: separar las cuatro cosas es lo que deja ver
+        sobre cuánto se puede actuar de verdad.</p>
+      <table>
+        <thead><tr><th>Grupo</th><th>Qué es</th><th class="num">Al mes</th></tr></thead>
+        <tbody id="rw-grupos"></tbody>
+      </table>
+      <div id="rw-reparto-detalle" style="margin-top:16px"></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Qué es lo que ya está decidido</div>
+      <p class="an-nota">Estos pagos salen igual, decidas lo que decidas. El
+        resto de tu gasto es sobre lo que sí puedes actuar.</p>
+      <table>
+        <thead><tr><th>Compromiso</th><th class="num">Al mes</th></tr></thead>
+        <tbody id="rw-comprometido-detalle"></tbody>
+      </table>
+      <p class="an-nota" id="rw-cuotas-nota" style="margin-top:12px"></p>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Cuánto gastas realmente</div>
+      <p class="an-nota">No hay una sola respuesta. Elige con qué medida
+        proyectar: cuando las cuatro se parecen, el número es confiable.</p>
+      <div class="chips" id="rw-esc-chips"></div>
+      <div class="esc-panel" id="rw-esc-panel"></div>
+      <p class="an-nota" id="rw-esc-nota" style="margin:12px 0 0"></p>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Dónde se va la plata</div>
+      <p class="an-nota">Cada barra es un comercio, no una categoría. "Salud
+        $142.280" no se puede accionar; "Solufar, 37 veces en 6 meses" sí.</p>
+      <div id="rw-comercios"></div>
+      <p class="an-nota" style="margin-top:10px">
+        <span class="et et-rec">recurrente</span> pasa casi todos los meses ·
+        <span class="et et-oca">ocasional</span> algunos ·
+        <span class="et et-uni">único</span> una sola vez, no se repite ·
+        <span class="et et-fij">fijo</span> ya comprometido
+      </p>
+    </div>
+
+    <div class="card-full" id="rw-card-goteo">
+      <div class="card-title">El goteo</div>
+      <p class="an-nota">Compras chicas y seguidas. Ninguna duele por sí sola y
+        juntas pesan más que el supermercado: es el gasto más fácil de bajar
+        porque nadie lo está defendiendo, simplemente no se ve.</p>
+      <div class="goteo-hero">
+        <div>
+          <div class="goteo-num" id="rw-goteo-monto">&mdash;</div>
+          <div class="goteo-sub" id="rw-goteo-sub">&mdash;</div>
+        </div>
+      </div>
+      <div id="rw-goteo-lista"></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Qué puedes hacer, y cuánto ganas con eso</div>
+      <p class="an-nota">Sin sueldo entrando, la unidad que importa no son los
+        pesos: son los meses. Cada palanca dice cuánto cuesta hoy, cuánto se
+        podría ahorrar y cuánto runway agrega.</p>
+      <div id="rw-palancas"></div>
+      <div class="palanca-total" id="rw-palancas-total"></div>
+    </div>
+
+    <div class="card-full">
       <div class="card-title">Cómo baja el saldo, mes a mes</div>
       <p class="an-nota" id="rw-nota-serie"></p>
       <div class="chart-wrap"><canvas id="chRwSerie"></canvas></div>
@@ -906,6 +1030,135 @@ function renderRT() {
 // La cifra que se mira todos los días. Se construye sobre dos reglas: el gasto
 // se mide por consumo -no por lo que sale de la cuenta, que llega en bloques- y
 // un ingreso que se acaba no se proyecta hacia adelante.
+// Cuánto se gasta al mes, medido de cuatro maneras.
+//
+// Presentar una sola cifra es lo que genera desconfianza: el tablero decía
+// $4.592.780 cuando los dos últimos meses habían sido $2.947.881 y $3.681.328.
+// Ninguno estaba mal — la mediana de cuatro meses arrastraba una vasectomía y
+// un outplacement. Verlas juntas dice si el número es confiable.
+let ESC_SEL = null;
+
+function pintarEscenarios(r) {
+  const escs = r.gasto_escenarios || [];
+  const chips = document.getElementById("rw-esc-chips");
+  const panel = document.getElementById("rw-esc-panel");
+  if (!chips || !panel) return;
+  if (!escs.length) { chips.innerHTML = panel.innerHTML = ""; return; }
+
+  if (ESC_SEL === null) {
+    const enUso = escs.findIndex(e => e.actual);
+    ESC_SEL = enUso >= 0 ? enUso : escs.length - 1;
+  }
+
+  chips.innerHTML = escs.map((e, i) =>
+    "<button class='chip" + (i === ESC_SEL ? " on" : "") + "' data-esc='" + i + "'>" +
+    esc(e.etiqueta) + "</button>").join("");
+  chips.querySelectorAll("[data-esc]").forEach(b => b.onclick = () => {
+    ESC_SEL = +b.dataset.esc;
+    renderRW();
+  });
+
+  panel.innerHTML = escs.map((e, i) =>
+    "<div class='esc-caja" + (i === ESC_SEL ? " sel" : "") + "'>" +
+    "<div class='esc-tit'>" + esc(e.etiqueta) + "</div>" +
+    "<div class='esc-gasto'>" + clp(e.burn) + "</div>" +
+    "<div class='esc-meses'>alcanza <b>" + (e.meses == null ? "—" : e.meses + " meses") +
+    "</b>" + (e.fecha ? " · hasta " + esc(e.fecha) : "") + "</div>" +
+    "</div>").join("");
+
+  // Qué tan lejos están entre sí: es la medida de confianza del número
+  const vals = escs.map(e => e.burn).filter(v => v > 0);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const disp = max ? (max - min) / max : 0;
+  const meses = escs.map(e => e.meses).filter(v => v != null);
+  document.getElementById("rw-esc-nota").innerHTML =
+    "<span class='esc-rango' style='display:block'>" +
+    (disp < 0.25
+      ? "Las cuatro medidas van de <b>" + clp(min) + "</b> a <b>" + clp(max) +
+        "</b>. Están cerca, así que la proyección es confiable: entre <b>" +
+        Math.min(...meses) + "</b> y <b>" + Math.max(...meses) + " meses</b>."
+      : "Las medidas van de <b>" + clp(min) + "</b> a <b>" + clp(max) +
+        "</b>, una diferencia grande. Suele significar que algún mes trae un " +
+        "gasto fuera de lo común: mira el escenario <i>sin gastos únicos</i>.") +
+    "</span>";
+}
+
+// Dónde se va la plata, el goteo y qué hacer al respecto.
+//
+// El orden importa: primero se ve el hecho (dónde va), después el patrón que
+// no se veía solo (el goteo), y recién al final la sugerencia. Al revés se
+// lee como un sermón y se cierra la pestaña.
+const ET = { "recurrente":"et-rec", "ocasional":"et-oca", "único":"et-uni", "fijo":"et-fij" };
+
+function pintarOptimizar(r) {
+  const o = r.optimizar || {};
+
+  // --- dónde se va la plata ---
+  const com = (o.comercios || []).slice(0, 16);
+  const host = document.getElementById("rw-comercios");
+  if (host) {
+    const tope = com.length ? Math.max(...com.map(c => c.al_mes)) : 1;
+    host.innerHTML = com.map(c => {
+      // Lo que no es una decisión de hoy se pinta apagado, para que la vista
+      // dirija el ojo a lo que sí se puede cambiar.
+      const pasivo = (c.tipo === "único" || c.tipo === "fijo");
+      const color = pasivo ? "var(--border)"
+                  : c.tipo === "ocasional" ? "#fbbf24" : "#2563eb";
+      const ancho = Math.max(2, Math.round(c.al_mes / tope * 100));
+      return "<div class='cm" + (pasivo ? " pasivo" : "") + "'>" +
+        "<div class='cm-nom'>" + esc(c.comercio.toLowerCase()) + "</div>" +
+        "<div class='cm-val'>" + clp(c.al_mes) + "</div>" +
+        "<div class='cm-barra'><i style='width:" + ancho + "%;background:" + color + "'></i></div>" +
+        "<div class='cm-meta'>" +
+          "<span class='et " + (ET[c.tipo] || "et-uni") + "'>" + esc(c.tipo) + "</span> · " +
+          c.veces + (c.veces === 1 ? " compra" : " compras") +
+          " en " + c.meses + " de " + c.de + " meses · " +
+          "ticket " + clp(c.ticket) +
+        "</div></div>";
+    }).join("");
+  }
+
+  // --- el goteo ---
+  const g = o.goteo || {};
+  const cardG = document.getElementById("rw-card-goteo");
+  if (cardG) {
+    if (!g.n) { cardG.style.display = "none"; }
+    else {
+      cardG.style.display = "";
+      const compras = (g.comercios || []).reduce((a, c) => a + c.veces, 0);
+      document.getElementById("rw-goteo-monto").textContent = clp(g.al_mes) + " al mes";
+      document.getElementById("rw-goteo-sub").textContent =
+        g.n + " comercios · " + compras + " compras en el período · " +
+        "ticket promedio " + clp(Math.round(g.total / Math.max(1, compras)));
+      document.getElementById("rw-goteo-lista").innerHTML =
+        (g.comercios || []).slice(0, 10).map(c =>
+          "<div class='goteo-fila'><div>" + esc(c.comercio.toLowerCase()) +
+          "<div class='goteo-tick'>" + c.veces + " veces · " + clp(c.ticket) + " cada vez</div></div>" +
+          "<b>" + clp(c.al_mes) + "/mes</b></div>").join("");
+    }
+  }
+
+  // --- las palancas ---
+  const pal = o.palancas || [];
+  const hp = document.getElementById("rw-palancas");
+  if (hp) {
+    hp.innerHTML = pal.map(p =>
+      "<div class='palanca'>" +
+        "<div class='palanca-cab'><span class='palanca-tit'>" + esc(p.titulo) + "</span>" +
+        "<span class='palanca-gana'>" + esc(p.gana || ("+" + p.meses + " meses")) + "</span></div>" +
+        "<div class='palanca-cifras'>" + esc(p.detalle) + " · hoy <b>" + clp(p.hoy) +
+        "</b> al mes · podrías ahorrar <b>" + clp(p.ahorro) + "</b> mensuales</div>" +
+        "<div class='palanca-como'>" + esc(p.como) + "</div></div>").join("");
+  }
+  const ht = document.getElementById("rw-palancas-total");
+  if (ht) {
+    ht.innerHTML = pal.length
+      ? "Haciéndolo todo: <b>" + clp(o.ahorro_total) + " al mes</b>, que son <b>" +
+        o.meses_total + " meses más</b> de sobrevivencia."
+      : "";
+  }
+}
+
 function renderRW() {
   const r = DATA.runway || {};
   if (!r.disponible) {
@@ -951,19 +1204,30 @@ function renderRW() {
     box.style.display = "none";
   }
 
+  // Los escenarios primero: definen con qué cifra se pinta todo lo demás.
+  pintarEscenarios(r);
+  // El elegido manda sobre meses, fecha y serie. Si no hay ninguno, se cae a
+  // lo que trae el runway, que es como funcionaba antes.
+  const eSel = (r.gasto_escenarios || [])[ESC_SEL] || null;
+  const vista = eSel
+    ? { meses: eSel.meses, fecha: eSel.fecha, burn: eSel.burn,
+        meses_sin_hogar: eSel.meses_sin_hogar, serie: eSel.serie }
+    : r;
+
   // El número principal: el escenario prudente, sin contar la ayuda de terceros
   const card = document.getElementById("rw-card-meses");
   document.getElementById("rw-meses").textContent =
-    r.meses === null ? "sin límite" : r.meses + (r.meses === 1 ? " mes" : " meses");
-  document.getElementById("rw-hasta").textContent = r.fecha
-    ? "hasta " + r.fecha + (r.meses_sin_hogar && r.meses_sin_hogar !== r.meses
-        ? " · " + r.meses_sin_hogar + " sin el ingreso de las terapias" : "")
+    vista.meses === null ? "sin límite"
+      : vista.meses + (vista.meses === 1 ? " mes" : " meses");
+  document.getElementById("rw-hasta").textContent = vista.fecha
+    ? "hasta " + vista.fecha + (vista.meses_sin_hogar && vista.meses_sin_hogar !== vista.meses
+        ? " · " + vista.meses_sin_hogar + " sin el ingreso de las terapias" : "")
     : "el flujo alcanza sin consumir fondos";
   // Menos de 6 meses es zona de decisión, no de observación
-  card.style.borderTopColor = r.meses === null ? "var(--green)"
-    : r.meses <= 6 ? "var(--red)" : r.meses <= 12 ? "var(--amber)" : "var(--green)";
+  card.style.borderTopColor = vista.meses === null ? "var(--green)"
+    : vista.meses <= 6 ? "var(--red)" : vista.meses <= 12 ? "var(--amber)" : "var(--green)";
 
-  document.getElementById("rw-burn").textContent = clp(r.burn);
+  document.getElementById("rw-burn").textContent = clp(vista.burn);
   const t = r.tendencia || {};
   document.getElementById("rw-tendencia").textContent =
     t.direccion === "baja" ? "▼ " + Math.abs(t.pct) + "% menos que antes"
@@ -974,14 +1238,77 @@ function renderRW() {
   document.getElementById("rw-fondos-sub").textContent =
     clp(r.saldo_cuenta) + " en cuenta · " + clp(r.inversiones) + " invertido";
 
-  document.getElementById("rw-discrecional").textContent = clp(r.discrecional);
+  // Lo decidible de verdad, no el residuo. El residuo metía el supermercado y
+  // los remedios entre las decisiones libres y casi doblaba el número.
+  const gr = r.grupos || {};
+  document.getElementById("rw-discrecional").textContent =
+    clp(r.decidible != null ? r.decidible : r.discrecional);
   document.getElementById("rw-comprometido").textContent =
-    clp(r.comprometido) + " ya está comprometido";
+    clp(r.comprometido) + " comprometido · " + clp(gr.vivir || 0) + " para vivir";
+
+  // Los cuatro grupos, y dentro de cada uno las categorías que lo forman.
+  const FILAS_GRUPO = [
+    ["comprometido", "Comprometido", "Fecha y monto fijos. Sale igual.", r.comprometido],
+    ["vivir", "Vivir", "Pasa siempre. El monto se puede mover, el gasto no.", gr.vivir],
+    ["decidible", "Decidible", "Pasa siempre y sí se puede recortar.", gr.decidible],
+    ["esporadico", "Esporádico", "No pasa todos los meses. Repartido entre ellos.", gr.esporadico],
+  ];
+  const totalGasto = FILAS_GRUPO.reduce((a, f) => a + (f[3] || 0), 0);
+  document.getElementById("rw-grupos").innerHTML = FILAS_GRUPO.map(f =>
+    "<tr" + (f[0] === "decidible" ? " style='background:rgba(124,58,237,.07)'" : "") + ">" +
+    "<td style='font-weight:600'>" + f[1] + "</td>" +
+    "<td style='color:var(--muted);font-size:.82rem'>" + f[2] + "</td>" +
+    "<td class='num'>" + clp(f[3] || 0) + "</td></tr>").join("") +
+    "<tr><td style='font-weight:700'>Total</td><td></td>" +
+    "<td class='num' style='font-weight:700'>" + clp(totalGasto) + "</td></tr>";
+
+  // El detalle por categoría dentro de cada grupo, para poder discutirlo
+  const rep = r.reparto || [];
+  document.getElementById("rw-reparto-detalle").innerHTML =
+    ["decidible", "vivir", "esporadico"].map(g => {
+      const filas = rep.filter(x => x.grupo === g);
+      if (!filas.length) return "";
+      const suma = filas.reduce((a, x) => a + x.monto, 0);
+      return "<div style='margin-bottom:14px'>" +
+        "<div style='font-weight:700;font-size:.82rem;text-transform:uppercase;" +
+        "letter-spacing:.04em;margin-bottom:6px'>" + g + " · " + clp(suma) + "</div>" +
+        "<div style='font-size:.82rem;line-height:1.7'>" +
+        filas.map(x => "<span style='display:inline-block;margin-right:14px'>" +
+          esc(x.categoria) + " <b>" + clp(x.monto) + "</b>" +
+          "<span style='color:var(--muted)'> " + x.meses + "/" + x.de + "</span></span>").join("") +
+        "</div></div>";
+    }).join("");
+
+  // De qué está hecho lo comprometido. Verlo abierto es lo que permite
+  // discutirlo: un número solo no se puede negociar con nadie.
+  const det = r.comprometido_detalle || [];
+  document.getElementById("rw-comprometido-detalle").innerHTML =
+    det.map(d => "<tr><td style='font-weight:600'>" + esc(d.concepto) + "</td>" +
+                 "<td class='num'>" + clp(d.monto) + "</td></tr>").join("") +
+    (det.length ? "<tr><td style='font-weight:700'>Total</td><td class='num' " +
+      "style='font-weight:700'>" + clp(r.comprometido) + "</td></tr>" : "");
+
+  // La carga de cuotas no es para siempre: baja sola. Decirlo cambia la
+  // lectura de todo lo demás.
+  const cuo = r.cuotas_futuras || [];
+  const notaCuo = document.getElementById("rw-cuotas-nota");
+  if (cuo.length >= 3) {
+    const primera = cuo[0], ultima = cuo[cuo.length - 1];
+    const baja = primera.monto - ultima.monto;
+    notaCuo.innerHTML = baja > 0
+      ? "Tus cuotas de tarjeta van bajando solas: de <b>" + clp(primera.monto) +
+        "</b> en " + esc(primera.mes) + " a <b>" + clp(ultima.monto) + "</b> en " +
+        esc(ultima.mes) + ". Son " + clp(baja) + " al mes que se liberan sin que " +
+        "hagas nada, <i>siempre que no tomes cuotas nuevas</i>."
+      : "";
+  } else { notaCuo.textContent = ""; }
+
+  pintarOptimizar(r);
 
   // Cómo baja el saldo
-  const serie = r.serie || [];
+  const serie = vista.serie || r.serie || [];
   document.getElementById("rw-nota-serie").textContent =
-    "Suponiendo " + clp(r.burn) + " de gasto al mes" +
+    "Suponiendo " + clp(vista.burn) + " de gasto al mes" +
     (r.temporal && r.temporal.pagos
       ? " y " + r.temporal.pagos + " pagos de " + clp(r.temporal.monto) +
         " del " + (r.temporal.nombre || "ingreso temporal") + "."
@@ -1059,7 +1386,11 @@ function renderRW() {
   }
   notas.push("De tu gasto mensual, <b>" + clp(r.comprometido) + " está decidido</b> antes de " +
     "que empiece el mes: dividendo, servicios básicos y cuotas ya tomadas. " +
-    "El margen real de maniobra son " + clp(r.discrecional) + ".");
+    (gr.vivir
+      ? "Otros " + clp(gr.vivir) + " son el vivir de todos los días —comida, " +
+        "remedios, bencina—: el monto se puede mover, el gasto no. " +
+        "Sobre lo que puedes decidir de verdad son <b>" + clp(r.decidible) + "</b>."
+      : "El margen real de maniobra son " + clp(r.discrecional) + "."));
   if (t.direccion === "baja") {
     notas.push("Tu gasto viene <b>bajando</b> " + Math.abs(t.pct) + "% respecto de los meses " +
       "anteriores. Si la tendencia se sostiene, el plazo real será mayor que el que muestra arriba.");
