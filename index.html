@@ -563,7 +563,7 @@
         <div class="kpi-sub" id="rw-hasta">&mdash;</div>
       </div>
       <div class="kpi-card amber">
-        <div class="kpi-label">Gasto del mes</div>
+        <div class="kpi-label">Gasto mensual estimado</div>
         <div class="kpi-value" id="rw-burn">&mdash;</div>
         <div class="kpi-sub" id="rw-tendencia">&mdash;</div>
       </div>
@@ -580,35 +580,36 @@
     </div>
 
     <div class="card-full">
-      <div class="card-title">En qué se divide tu gasto</div>
-      <p class="an-nota">No todo lo que no está comprometido es una decisión libre.
-        Nadie decide dejar de comer: separar las cuatro cosas es lo que deja ver
-        sobre cuánto se puede actuar de verdad.</p>
-      <table>
-        <thead><tr><th>Grupo</th><th>Qué es</th><th class="num">Al mes</th></tr></thead>
-        <tbody id="rw-grupos"></tbody>
-      </table>
-      <div id="rw-reparto-detalle" style="margin-top:16px"></div>
+      <div class="card-title">Cómo baja el saldo, mes a mes</div>
+      <p class="an-nota" id="rw-nota-serie"></p>
+      <div class="chart-wrap"><canvas id="chRwSerie"></canvas></div>
     </div>
 
     <div class="card-full">
-      <div class="card-title">Qué es lo que ya está decidido</div>
-      <p class="an-nota">Estos pagos salen igual, decidas lo que decidas. El
-        resto de tu gasto es sobre lo que sí puedes actuar.</p>
-      <table>
-        <thead><tr><th>Compromiso</th><th class="num">Al mes</th></tr></thead>
-        <tbody id="rw-comprometido-detalle"></tbody>
-      </table>
-      <p class="an-nota" id="rw-cuotas-nota" style="margin-top:12px"></p>
+      <div class="card-title">Qué puedes hacer, y cuánto ganas con eso</div>
+      <p class="an-nota">Sin sueldo entrando, la unidad que importa no son los
+        pesos: son los meses. Cada palanca dice cuánto cuesta hoy, cuánto se
+        podría ahorrar y cuánto runway agrega.</p>
+      <div id="rw-palancas"></div>
+      <div class="palanca-total" id="rw-palancas-total"></div>
     </div>
 
-    <div class="card-full">
-      <div class="card-title">Cuánto gastas realmente</div>
-      <p class="an-nota">No hay una sola respuesta. Elige con qué medida
-        proyectar: cuando las cuatro se parecen, el número es confiable.</p>
-      <div class="chips" id="rw-esc-chips"></div>
-      <div class="esc-panel" id="rw-esc-panel"></div>
-      <p class="an-nota" id="rw-esc-nota" style="margin:12px 0 0"></p>
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title">Si recortas lo que puedes recortar</div>
+        <table>
+          <thead><tr><th>Recorte</th><th class="num">Gasto/mes</th><th class="num">Ahorro</th><th class="num">Alcanza</th></tr></thead>
+          <tbody id="rw-escenarios"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">De dónde salen los fondos</div>
+        <table>
+          <thead><tr><th>Origen</th><th class="num">Monto</th><th>Actualizado</th></tr></thead>
+          <tbody id="rw-fuentes"></tbody>
+        </table>
+        <p class="an-nota" id="rw-aviso-viejo" style="margin-top:12px"></p>
+      </div>
     </div>
 
     <div class="card-full">
@@ -639,41 +640,40 @@
     </div>
 
     <div class="card-full">
-      <div class="card-title">Qué puedes hacer, y cuánto ganas con eso</div>
-      <p class="an-nota">Sin sueldo entrando, la unidad que importa no son los
-        pesos: son los meses. Cada palanca dice cuánto cuesta hoy, cuánto se
-        podría ahorrar y cuánto runway agrega.</p>
-      <div id="rw-palancas"></div>
-      <div class="palanca-total" id="rw-palancas-total"></div>
+      <div class="card-title">En qué se divide tu gasto</div>
+      <p class="an-nota">No todo lo que no está comprometido es una decisión libre.
+        Nadie decide dejar de comer: separar las cuatro cosas es lo que deja ver
+        sobre cuánto se puede actuar de verdad.</p>
+      <table>
+        <thead><tr><th>Grupo</th><th>Qué es</th><th class="num">Al mes</th></tr></thead>
+        <tbody id="rw-grupos"></tbody>
+      </table>
+      <div id="rw-reparto-detalle" style="margin-top:16px"></div>
     </div>
 
     <div class="card-full">
-      <div class="card-title">Cómo baja el saldo, mes a mes</div>
-      <p class="an-nota" id="rw-nota-serie"></p>
-      <div class="chart-wrap"><canvas id="chRwSerie"></canvas></div>
-    </div>
-
-    <div class="chart-grid">
-      <div class="card">
-        <div class="card-title">Si recortas lo que puedes recortar</div>
-        <table>
-          <thead><tr><th>Recorte</th><th class="num">Gasto/mes</th><th class="num">Ahorro</th><th class="num">Alcanza</th></tr></thead>
-          <tbody id="rw-escenarios"></tbody>
-        </table>
-      </div>
-      <div class="card">
-        <div class="card-title">De dónde salen los fondos</div>
-        <table>
-          <thead><tr><th>Origen</th><th class="num">Monto</th><th>Actualizado</th></tr></thead>
-          <tbody id="rw-fuentes"></tbody>
-        </table>
-        <p class="an-nota" id="rw-aviso-viejo" style="margin-top:12px"></p>
-      </div>
+      <div class="card-title">Qué es lo que ya está decidido</div>
+      <p class="an-nota">Estos pagos salen igual, decidas lo que decidas. El
+        resto de tu gasto es sobre lo que sí puedes actuar.</p>
+      <table>
+        <thead><tr><th>Compromiso</th><th class="num">Al mes</th></tr></thead>
+        <tbody id="rw-comprometido-detalle"></tbody>
+      </table>
+      <p class="an-nota" id="rw-cuotas-nota" style="margin-top:12px"></p>
     </div>
 
     <div class="card-full">
       <div class="card-title">Tu gasto mes a mes</div>
       <div class="chart-wrap"><canvas id="chRwGasto"></canvas></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Cuánto gastas realmente</div>
+      <p class="an-nota">No hay una sola respuesta. Elige con qué medida
+        proyectar: cuando las cuatro se parecen, el número es confiable.</p>
+      <div class="chips" id="rw-esc-chips"></div>
+      <div class="esc-panel" id="rw-esc-panel"></div>
+      <p class="an-nota" id="rw-esc-nota" style="margin:12px 0 0"></p>
     </div>
 
     <div class="card-full">
@@ -1030,6 +1030,19 @@ function renderRT() {
 // La cifra que se mira todos los días. Se construye sobre dos reglas: el gasto
 // se mide por consumo -no por lo que sale de la cuenta, que llega en bloques- y
 // un ingreso que se acaba no se proyecta hacia adelante.
+const MES_CORTO = ["ene","feb","mar","abr","may","jun",
+                   "jul","ago","sep","oct","nov","dic"];
+function mesCorto(clave) {          // "2026-08" -> "agosto"
+  const LARGO = ["enero","febrero","marzo","abril","mayo","junio","julio",
+                 "agosto","septiembre","octubre","noviembre","diciembre"];
+  const n = parseInt(String(clave).slice(5, 7), 10);
+  return (n >= 1 && n <= 12) ? LARGO[n - 1] : String(clave);
+}
+function mesEnCurso() {
+  const h = new Date();
+  return h.getFullYear() + "-" + String(h.getMonth() + 1).padStart(2, "0");
+}
+
 // Cuánto se gasta al mes, medido de cuatro maneras.
 //
 // Presentar una sola cifra es lo que genera desconfianza: el tablero decía
@@ -1227,12 +1240,19 @@ function renderRW() {
   card.style.borderTopColor = vista.meses === null ? "var(--green)"
     : vista.meses <= 6 ? "var(--red)" : vista.meses <= 12 ? "var(--amber)" : "var(--green)";
 
+  // La cifra proyectada NO es lo que se gastó en ningún mes: es la medida
+  // elegida arriba. Decía "Gasto del mes" y mostraba $4.420.585 cuando agosto
+  // había sido $3.383.467, y no había forma de saber de dónde salía el número.
   document.getElementById("rw-burn").textContent = clp(vista.burn);
+  const escAct = (r.gasto_escenarios || [])[ESC_SEL];
+  const ultimoReal = (() => {
+    const ms = Object.keys(r.gastos_mes || {}).filter(m => m < mesEnCurso()).sort();
+    return ms.length ? { mes: ms[ms.length - 1], monto: r.gastos_mes[ms[ms.length - 1]] } : null;
+  })();
+  document.getElementById("rw-tendencia").innerHTML =
+    (escAct ? "según <b>" + esc(escAct.etiqueta.toLowerCase()) + "</b>" : "") +
+    (ultimoReal ? " · " + mesCorto(ultimoReal.mes) + " fueron " + clp(ultimoReal.monto) : "");
   const t = r.tendencia || {};
-  document.getElementById("rw-tendencia").textContent =
-    t.direccion === "baja" ? "▼ " + Math.abs(t.pct) + "% menos que antes"
-    : t.direccion === "sube" ? "▲ " + t.pct + "% más que antes"
-    : "estable";
 
   document.getElementById("rw-fondos").textContent = clp(r.fondos);
   document.getElementById("rw-fondos-sub").textContent =
