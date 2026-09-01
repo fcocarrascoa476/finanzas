@@ -115,6 +115,8 @@
   tbody td { padding:7px 9px; border-bottom:1px solid var(--border); }
   .badge { display:inline-block; padding:2px 7px; border-radius:99px; font-size:.66rem; font-weight:600; }
   .b-cuotas{ background:#ede9fe; color:#5b21b6; } .b-contado{ background:#d1fae5; color:#065f46; }
+    .b-usd{ background:#cffafe; color:#0e5f6b; }
+    .b-pend{ background:#fef3c7; color:#92400e; }
   .b-nueva{ background:#fef3c7; color:#92400e; } .b-activa{ background:#d1fae5; color:#065f46; }
   .tag-cat { display:inline-block; padding:1px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:.67rem; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
@@ -147,6 +149,7 @@
     <button class="tab on" id="tab-rt">Mes en curso</button>
     <button class="tab" id="tab-of">Cierre mensual</button>
     <button class="tab" id="tab-an">Análisis</button>
+      <button class="tab" id="tab-rw">Cuánto alcanza</button>
   </div>
 
   <!-- ===================== VISTA 1: MES EN CURSO ===================== -->
@@ -237,6 +240,24 @@
       <div class="chart-wrap"><canvas id="chRtCatMes"></canvas></div>
     </div>
 
+    <div class="card-full" id="rt-card-comp" style="display:none">
+      <div class="card-title">Este mes contra los anteriores <span id="rt-comp-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
+      <p class="an-nota" id="rt-comp-resumen"></p>
+      <div class="chart-wrap"><canvas id="chRtComp"></canvas></div>
+    </div>
+
+    <div class="card-full" id="rt-card-usd" style="display:none">
+      <div class="card-title">Compras en dólares <span style="color:var(--muted);font-weight:400;text-transform:none">· el peso es estimado hasta que llega el estado de cuenta</span></div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin:2px 0 10px">
+        <span id="rt-usd-total" style="font-size:1.5rem;font-weight:700;color:#0e5f6b"></span>
+        <span id="rt-usd-sub" style="font-size:.78rem;color:var(--muted)"></span>
+      </div>
+      <table>
+        <thead><tr><th>Comercio</th><th class="num"></th><th class="num">Dólares</th><th class="num">En pesos</th></tr></thead>
+        <tbody id="rt-usd-tabla"></tbody>
+      </table>
+    </div>
+
     <div class="card-full">
       <div class="card-title">Detalle de movimientos <span id="rt-n" style="color:var(--muted);font-weight:400"></span></div>
       <div class="tbar">
@@ -278,9 +299,9 @@
         <div class="kpi-sub" id="kpi-n-cuotas">&mdash;</div>
       </div>
       <div class="kpi-card blue">
-        <div class="kpi-label">Cuotas a pagar próximo mes</div>
+        <div class="kpi-label">Tu próximo pago de cuotas</div>
         <div class="kpi-value" id="kpi-cuota-prox">&mdash;</div>
-        <div class="kpi-sub">según el banco</div>
+        <div class="kpi-sub" id="kpi-cuota-prox-sub">según el banco</div>
       </div>
       <div class="kpi-card amber">
         <div class="kpi-label">Saldo inicial del período</div>
@@ -337,6 +358,17 @@
     <div class="card-full">
       <div class="card-title">Evolución por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· top 6 + otros (tarjeta)</span></div>
       <div class="chart-wrap"><canvas id="chOfCatMes"></canvas></div>
+    </div>
+
+    <div class="card-full" id="of-card-serv" style="display:none">
+      <div class="card-title">Cuentas que pagas juntas <span style="color:var(--muted);font-weight:400;text-transform:none">· abiertas del comprobante</span></div>
+      <p class="an-nota">En la cartola son una sola transferencia. Esto es lo que hay dentro.</p>
+      <div class="chart-wrap"><canvas id="chOfServicios"></canvas></div>
+      <div id="of-serv-mes" style="font-size:.8rem;color:var(--muted);margin:14px 0 6px"></div>
+      <table>
+        <thead><tr><th>Empresa</th><th>Categoría</th><th class="num">Monto</th></tr></thead>
+        <tbody id="of-serv-tabla"></tbody>
+      </table>
     </div>
 
     <div class="card-full">
@@ -456,6 +488,75 @@
       <div id="an-consejos"></div>
     </div>
   </main>
+
+  <!-- ===================== VISTA 4: CUÁNTO ALCANZA ===================== -->
+  <main id="vista-rw" style="display:none">
+    <div class="card-full" id="rw-alerta" style="display:none;border-left:5px solid var(--muted)">
+      <div class="card-title" id="rw-alerta-titulo"></div>
+      <p id="rw-alerta-msg" style="font-size:1.02rem;margin:6px 0 12px"></p>
+      <table>
+        <thead><tr><th>Cuándo</th><th>Qué se paga</th><th class="num">Monto</th></tr></thead>
+        <tbody id="rw-alerta-detalle"></tbody>
+      </table>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card" id="rw-card-meses">
+        <div class="kpi-label">Alcanza para</div>
+        <div class="kpi-value" id="rw-meses">&mdash;</div>
+        <div class="kpi-sub" id="rw-hasta">&mdash;</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Gasto del mes</div>
+        <div class="kpi-value" id="rw-burn">&mdash;</div>
+        <div class="kpi-sub" id="rw-tendencia">&mdash;</div>
+      </div>
+      <div class="kpi-card teal">
+        <div class="kpi-label">Fondos disponibles</div>
+        <div class="kpi-value" id="rw-fondos">&mdash;</div>
+        <div class="kpi-sub" id="rw-fondos-sub">&mdash;</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Puedes decidir sobre</div>
+        <div class="kpi-value" id="rw-discrecional">&mdash;</div>
+        <div class="kpi-sub" id="rw-comprometido">&mdash;</div>
+      </div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Cómo baja el saldo, mes a mes</div>
+      <p class="an-nota" id="rw-nota-serie"></p>
+      <div class="chart-wrap"><canvas id="chRwSerie"></canvas></div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title">Si recortas lo que puedes recortar</div>
+        <table>
+          <thead><tr><th>Recorte</th><th class="num">Gasto/mes</th><th class="num">Ahorro</th><th class="num">Alcanza</th></tr></thead>
+          <tbody id="rw-escenarios"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">De dónde salen los fondos</div>
+        <table>
+          <thead><tr><th>Origen</th><th class="num">Monto</th><th>Actualizado</th></tr></thead>
+          <tbody id="rw-fuentes"></tbody>
+        </table>
+        <p class="an-nota" id="rw-aviso-viejo" style="margin-top:12px"></p>
+      </div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Tu gasto mes a mes</div>
+      <div class="chart-wrap"><canvas id="chRwGasto"></canvas></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Lo que hay que tener presente</div>
+      <div id="rw-notas"></div>
+    </div>
+  </main>
 </div>
 
 <script>
@@ -485,6 +586,12 @@ const filtros = { "rt-mes":"", "rt-origen":"todos", "rt-tipo":"todos", "rt-tarje
                   "an-modo":"curso" };
 const COL_MEDIO = { Credito:"#2563eb", Debito:"#0891b2", Transferencia:"#f59e0b" };
 const NOM_MEDIO = { Credito:"Crédito", Debito:"Débito", Transferencia:"Transferencias" };
+// Lo comprado en el extranjero es su propia categoría en vez de repartirse
+// entre Suscripciones y Otros: son cobros en dólares, casi todos recurrentes,
+// y verlos juntos es lo que permite decidir cuál cortar.
+// El texto debe ser IDÉNTICO al CAT_USD de generar_dashboard.py.
+const CAT_USD = "Compras en dólares";
+const catDe = m => m.usd ? CAT_USD : (m.cat || "Otros");
 const MES_ABR = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const mesLabel = k => MES_ABR[parseInt(k.slice(5,7),10) - 1] + " " + k.slice(2,4);
 
@@ -593,7 +700,7 @@ function mostrar(datos) {
   TOP_CATS_OF = topCategorias(ex.movs || [], N_CATS);
   initRango("rt", [...new Set((o.feed || []).map(m => m.mes))].filter(Boolean).sort().reverse());
   initRango("of", [...new Set((ex.movs || []).map(m => m.mes))].filter(Boolean).sort().reverse());
-  initFiltros(); renderRT(); renderOF(); renderAN();
+  initFiltros(); renderRT(); renderOF(); renderAN(); renderRW();
 }
 
 async function entrar(frase) {
@@ -751,7 +858,7 @@ function renderRT() {
 
   // Categorías: recalculadas sobre lo filtrado
   const agg = {};
-  movs.forEach(m => { agg[m.cat] = (agg[m.cat] || 0) + m.monto; });
+  movs.forEach(m => { agg[catDe(m)] = (agg[catDe(m)] || 0) + m.monto; });
   const cats = Object.entries(agg).sort((a,b) => b[1]-a[1]).slice(0, 10);
   chart("chRtCat", {
     type:"bar",
@@ -770,7 +877,10 @@ function renderRT() {
     apilarPorMes(hist, meses, m => m.medio || "Otro", ["Credito","Debito","Transferencia"], COL_MEDIO)
       .map(d => Object.assign(d, {label: NOM_MEDIO[d.label] || d.label})));
   chartApilado("chRtCatMes", etiquetas,
-    apilarPorMes(hist, meses, m => m.cat || "Otros", TOP_CATS));
+    apilarPorMes(hist, meses, catDe, TOP_CATS));
+
+  pintarUSD(movs, esActual, o);
+  pintarComparativo(o);
 
   pintarTabla({
     filas: ordenarBuscar(movs, "rt"), cuerpo: "rt-feed", contador: "rt-n",
@@ -778,16 +888,273 @@ function renderRT() {
     fila: m => {
       const esCuotas = m.medio === "Credito" && m.cuotas > 0;
       return "<td>" + m.fecha + (m.hora ? " <span style='color:var(--muted)'>" + m.hora + "</span>" : "") + "</td>" +
-        "<td style='font-weight:600'>" + esc(m.desc) + "</td>" +
+        "<td style='font-weight:600'>" + esc(m.desc) +
+          (m.usd ? " <span class='badge b-usd'>US$ " + m.usd.toFixed(2) + "</span>" : "") + "</td>" +
         "<td><span class='tag-cat'>" + esc(m.cat) + "</span></td>" +
         "<td>" + esc(m.medio) + "</td>" +
         "<td>" + (m.tarjeta ? "••" + esc(m.tarjeta) : "—") + "</td>" +
         "<td>" + (m.medio !== "Credito" ? "—" :
           (esCuotas ? "<span class='badge b-cuotas'>" + m.cuotas + " cuotas</span>"
                     : "<span class='badge b-contado'>Contado</span>")) + "</td>" +
-        "<td class='num' style='font-weight:600'>" + clp(m.monto) + "</td>";
+        // El "≈" avisa que ese peso salió de una tasa declarada, no del banco
+        "<td class='num' style='font-weight:600'>" + (m.usd ? "≈ " : "") + clp(m.monto) + "</td>";
     }
   });
+}
+
+// ── Cuánto alcanza el dinero ───────────────────────────────────────
+// La cifra que se mira todos los días. Se construye sobre dos reglas: el gasto
+// se mide por consumo -no por lo que sale de la cuenta, que llega en bloques- y
+// un ingreso que se acaba no se proyecta hacia adelante.
+function renderRW() {
+  const r = DATA.runway || {};
+  if (!r.disponible) {
+    document.getElementById("rw-meses").textContent = "—";
+    document.getElementById("rw-hasta").textContent = "faltan datos para calcularlo";
+    return;
+  }
+
+  // Lo primero: ¿hay que mover plata de la inversión a la cuenta?
+  // Va arriba de todo porque es lo accionable. Entre enero y marzo la cuenta
+  // quedó en negativo tres meses seguidos teniendo 41 millones invertidos.
+  const al = r.alerta || {};
+  const box = document.getElementById("rw-alerta");
+  if (al.mensaje) {
+    box.style.display = "";
+    const color = al.nivel === "urgente" ? "var(--red)"
+      : al.nivel === "atencion" ? "var(--amber)"
+      : al.nivel === "justo" ? "var(--amber)" : "var(--green)";
+    box.style.borderLeftColor = color;
+    document.getElementById("rw-alerta-titulo").textContent =
+      al.nivel === "urgente" ? "Hay que rescatar de la inversión, hoy"
+      : al.nivel === "atencion" ? "Conviene rescatar de la inversión"
+      : al.nivel === "justo" ? "Alcanza, pero sin margen"
+      : "La cuenta cubre lo que viene";
+    const msg = document.getElementById("rw-alerta-msg");
+    msg.textContent = al.mensaje;
+    msg.style.color = al.nivel === "urgente" ? "var(--red)" : "var(--tinta)";
+    document.getElementById("rw-alerta-detalle").innerHTML = (al.detalle || []).map(d =>
+      "<tr><td>" + esc(d.fecha) + "</td><td>" + esc(d.concepto) +
+      "</td><td class='num'>" + clp(d.monto) + "</td></tr>").join("");
+  } else {
+    box.style.display = "none";
+  }
+
+  // El número principal: el escenario prudente, sin contar la ayuda de terceros
+  const card = document.getElementById("rw-card-meses");
+  document.getElementById("rw-meses").textContent =
+    r.meses === null ? "sin límite" : r.meses + (r.meses === 1 ? " mes" : " meses");
+  document.getElementById("rw-hasta").textContent = r.fecha
+    ? "hasta " + r.fecha + (r.meses_sin_hogar && r.meses_sin_hogar !== r.meses
+        ? " · " + r.meses_sin_hogar + " sin el ingreso de las terapias" : "")
+    : "el flujo alcanza sin consumir fondos";
+  // Menos de 6 meses es zona de decisión, no de observación
+  card.style.borderTopColor = r.meses === null ? "var(--green)"
+    : r.meses <= 6 ? "var(--red)" : r.meses <= 12 ? "var(--amber)" : "var(--green)";
+
+  document.getElementById("rw-burn").textContent = clp(r.burn);
+  const t = r.tendencia || {};
+  document.getElementById("rw-tendencia").textContent =
+    t.direccion === "baja" ? "▼ " + Math.abs(t.pct) + "% menos que antes"
+    : t.direccion === "sube" ? "▲ " + t.pct + "% más que antes"
+    : "estable";
+
+  document.getElementById("rw-fondos").textContent = clp(r.fondos);
+  document.getElementById("rw-fondos-sub").textContent =
+    clp(r.saldo_cuenta) + " en cuenta · " + clp(r.inversiones) + " invertido";
+
+  document.getElementById("rw-discrecional").textContent = clp(r.discrecional);
+  document.getElementById("rw-comprometido").textContent =
+    clp(r.comprometido) + " ya está comprometido";
+
+  // Cómo baja el saldo
+  const serie = r.serie || [];
+  document.getElementById("rw-nota-serie").textContent =
+    "Suponiendo " + clp(r.burn) + " de gasto al mes" +
+    (r.temporal && r.temporal.pagos
+      ? " y " + r.temporal.pagos + " pagos de " + clp(r.temporal.monto) +
+        " del " + (r.temporal.nombre || "ingreso temporal") + "."
+      : ".");
+  chart("chRwSerie", {
+    type: "line",
+    data: {
+      labels: serie.map(s => mesLabel(s.mes)),
+      datasets: [{
+        data: serie.map(s => s.saldo),
+        borderColor: "#1e3a5f", backgroundColor: "rgba(30,58,95,.10)",
+        fill: true, tension: .25, pointRadius: 0,
+        segment: {borderColor: c => c.p1.parsed.y < 0 ? "#e34948" : "#1e3a5f"},
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {display: false},
+        tooltip: {callbacks: {label: c => " Quedarían " + clp(c.raw)}}},
+      scales: {x: {grid: {display: false}}, y: ejeY},
+    },
+  });
+
+  // Escenarios de recorte
+  document.getElementById("rw-escenarios").innerHTML = (r.escenarios || []).map(e =>
+    "<tr" + (e.recorte === 0 ? " style='opacity:.65'" : "") + ">" +
+    "<td>" + (e.recorte === 0 ? "Como vas" : e.recorte + "%") + "</td>" +
+    "<td class='num'>" + clp(e.burn) + "</td>" +
+    "<td class='num'>" + (e.ahorro_mes ? clp(e.ahorro_mes) : "—") + "</td>" +
+    "<td class='num' style='font-weight:600'>" +
+      (e.meses === null ? "sin límite" : e.meses + " meses") + "</td></tr>").join("");
+
+  // De dónde salen los fondos
+  const viejo = r.inversiones_dias !== null && r.inversiones_dias > 45;
+  document.getElementById("rw-fuentes").innerHTML =
+    "<tr><td>Cuenta corriente</td><td class='num'>" + clp(r.saldo_cuenta) +
+      "</td><td>" + esc(r.saldo_al || "") + "</td></tr>" +
+    "<tr><td>Inversiones</td><td class='num'>" + clp(r.inversiones) +
+      "</td><td" + (viejo ? " style='color:var(--red)'" : "") + ">" +
+      esc(r.inversiones_al || "—") +
+      (r.inversiones_dias !== null ? " (" + r.inversiones_dias + " días)" : "") +
+      "</td></tr>";
+  document.getElementById("rw-aviso-viejo").textContent = viejo
+    ? "El saldo de las inversiones tiene más de 45 días. Actualízalo en la configuración para que este cálculo siga sirviendo."
+    : "";
+
+  // Gasto histórico
+  const gm = r.gastos_mes || {};
+  const meses = Object.keys(gm).sort();
+  chart("chRwGasto", {
+    type: "bar",
+    data: {labels: meses.map(mesLabel),
+      datasets: [{data: meses.map(m => gm[m]),
+        backgroundColor: meses.map(m =>
+          gm[m] > r.burn ? "rgba(227,73,72,.75)" : "rgba(27,175,122,.75)"),
+        borderRadius: 4}]},
+    options: {responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {display: false},
+        tooltip: {callbacks: {label: c => " " + clp(c.raw)}}},
+      scales: {x: {grid: {display: false}}, y: ejeY}},
+  });
+
+  // Lo que hay que tener presente
+  const notas = [];
+  if (r.temporal && r.temporal.pagos) {
+    notas.push("Quedan <b>" + r.temporal.pagos + " pagos</b> de " + clp(r.temporal.monto) +
+      " del " + esc(r.temporal.nombre || "ingreso temporal") +
+      ". Después de eso, no hay ingreso comprometido.");
+  }
+  if (r.hogar) {
+    notas.push("El número de arriba <b>incluye</b> " + clp(r.hogar) + " al mes de " +
+      esc(r.hogar_nombre || "ingreso del hogar") + ". Sin ese ingreso el plazo baja a <b>" +
+      r.meses_sin_hogar + " meses</b> (" + esc(r.fecha_sin_hogar || "") + "): son " +
+      (r.meses - r.meses_sin_hogar) + " meses de diferencia.");
+  }
+  notas.push("De tu gasto mensual, <b>" + clp(r.comprometido) + " está decidido</b> antes de " +
+    "que empiece el mes: dividendo, servicios básicos y cuotas ya tomadas. " +
+    "El margen real de maniobra son " + clp(r.discrecional) + ".");
+  if (t.direccion === "baja") {
+    notas.push("Tu gasto viene <b>bajando</b> " + Math.abs(t.pct) + "% respecto de los meses " +
+      "anteriores. Si la tendencia se sostiene, el plazo real será mayor que el que muestra arriba.");
+  }
+  document.getElementById("rw-notas").innerHTML =
+    "<ul style='margin:0;padding-left:20px;line-height:1.7'>" +
+    notas.map(n => "<li>" + n + "</li>").join("") + "</ul>";
+}
+
+// ── Cuentas que se pagan juntas ────────────────────────────────────
+// Doce cuentas en una sola transferencia: el dividendo hipotecario, la luz, el
+// gas, el agua. Sin abrirlo, el gasto fijo más grande queda escondido dentro de
+// una línea que dice "TRANSFER A FINTOC SPA".
+function pintarServicios() {
+  const s = (DATA.servicios || {});
+  const card = document.getElementById("of-card-serv");
+  if (!card) return;
+  if (!s.disponible || !s.meses || !s.meses.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  chartApilado("chOfServicios", s.labels,
+    s.series.map((serie, i) => ({
+      label: serie.cat,
+      data: serie.values,
+      // El dividendo es más de la mitad del total: se lleva el color fuerte
+      backgroundColor: serie.cat === "Dividendo hipotecario"
+        ? "#1e3a5f" : PALETA[i % PALETA.length],
+    })));
+
+  const total = (s.detalle || []).reduce((a, d) => a + d.monto, 0);
+  document.getElementById("of-serv-mes").textContent =
+    s.ultimo_label + " · " + clp(total) + " en " + (s.detalle || []).length + " cuentas";
+  document.getElementById("of-serv-tabla").innerHTML = (s.detalle || []).map(d =>
+    "<tr><td style='font-weight:600'>" + esc(d.empresa) + "</td>" +
+    "<td><span class='tag-cat'>" + esc(d.cat) + "</span></td>" +
+    "<td class='num'>" + clp(d.monto) + "</td></tr>").join("");
+}
+
+// ── Compras en el extranjero ───────────────────────────────────────
+// Se muestran aparte porque son cobros en dólares -casi todos suscripciones
+// que se renuevan solas- y el peso es una estimación hasta que llega el estado
+// de cuenta. Ya están sumados en el gasto del mes: esto es el desglose.
+function pintarUSD(movs, esActual, o) {
+  const card = document.getElementById("rt-card-usd");
+  const enUSD = movs.filter(m => m.usd);
+  if (!enUSD.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const totUSD = enUSD.reduce((a, m) => a + m.usd, 0);
+  const totCLP = enUSD.reduce((a, m) => a + m.monto, 0);
+  const gasto  = movs.reduce((a, m) => a + m.monto, 0);
+  document.getElementById("rt-usd-total").textContent = "US$ " + totUSD.toFixed(2);
+  document.getElementById("rt-usd-sub").textContent =
+    "≈ " + clp(totCLP) + " · " + (gasto ? Math.round(100 * totCLP / gasto) : 0) +
+    "% del gasto · " + enUSD.length + (enUSD.length === 1 ? " compra" : " compras");
+
+  // Un comercio por fila: lo que se repite mes a mes es lo que conviene revisar
+  const agg = {};
+  enUSD.forEach(m => {
+    const k = m.desc;
+    (agg[k] = agg[k] || {usd:0, clp:0, n:0, conf:0});
+    agg[k].usd += m.usd; agg[k].clp += m.monto; agg[k].n += 1;
+    if (m.confirmado) agg[k].conf += 1;
+  });
+  const filas = Object.entries(agg).sort((a, b) => b[1].usd - a[1].usd);
+  // "Facturada" = el estado de cuenta ya la trajo, así que ese peso es el del
+  // banco. Lo demás sigue siendo estimación, y conviene que se note.
+  document.getElementById("rt-usd-tabla").innerHTML = filas.map(([d, v]) =>
+    "<tr><td style='font-weight:600'>" + esc(d) +
+      (v.conf === v.n ? " <span class='badge b-contado'>facturada</span>"
+       : v.conf ? " <span class='badge b-contado'>" + v.conf + " de " + v.n + " facturadas</span>"
+       : " <span class='badge b-pend'>por facturar</span>") + "</td>" +
+    "<td class='num'>" + (v.n > 1 ? v.n + "×" : "") + "</td>" +
+    "<td class='num'>US$ " + v.usd.toFixed(2) + "</td>" +
+    "<td class='num' style='color:var(--muted)'>" + (v.conf === v.n ? "" : "≈ ") + clp(v.clp) + "</td></tr>").join("");
+}
+
+// ── Mismo tramo del mes, contra los meses anteriores ───────────────
+// Comparar un mes a medias contra meses completos siempre dice "vas bien".
+// Recortando todos los meses al mismo día la comparación se vuelve honesta.
+function pintarComparativo(o) {
+  const c = o.comparativo || {};
+  const card = document.getElementById("rt-card-comp");
+  if (!c.disponible || c.meses.length < 2) { card.style.display = "none"; return; }
+  card.style.display = "";
+  document.getElementById("rt-comp-nota").textContent =
+    "· del día 1 al " + c.dia + " de cada mes";
+
+  const cats = c.categorias;
+  const datasets = c.series.map((s, i) => ({
+    label: s.cat,
+    data: s.values,
+    backgroundColor: s.cat === CAT_USD ? "#00a0b0" : PALETA[i % PALETA.length],
+  }));
+  chartApilado("chRtComp", c.labels, datasets);
+
+  // El titular: cómo va el mes en curso contra el promedio del mismo tramo
+  const n = c.totales.length, act = c.totales[n - 1];
+  const previos = c.totales.slice(0, n - 1);
+  const prom = previos.reduce((a, b) => a + b, 0) / previos.length;
+  const dif = act - prom, pct = prom ? Math.round(100 * dif / prom) : 0;
+  const el = document.getElementById("rt-comp-resumen");
+  el.textContent = "A esta altura del mes llevas " + clp(act) + ", " +
+    Math.abs(pct) + "% " + (dif >= 0 ? "más" : "menos") +
+    " que el promedio del mismo tramo (" + clp(Math.round(prom)) + ").";
+  el.style.color = dif > 0 ? "var(--red)" : "var(--green)";
 }
 
 // ── Tablas: búsqueda, orden y "ver más" ────────────────────────────
@@ -867,6 +1234,11 @@ function renderOF() {
   document.getElementById("kpi-comprometido").textContent = clp(k.total_comprometido);
   document.getElementById("kpi-n-cuotas").textContent     = k.n_activas + " activas + " + k.n_nuevas + " nuevas";
   document.getElementById("kpi-cuota-prox").textContent   = clp(k.cuota_proximo_mes);
+  // Nombrar el mes evita la ambiguedad de "proximo mes": a mitad de agosto la
+  // factura de agosto todavia no se paga, y es esa la que el usuario tiene enfrente.
+  document.getElementById("kpi-cuota-prox-sub").textContent =
+    k.cuota_proximo_mes_label ? "cuotas de " + k.cuota_proximo_mes_label + " · según el banco"
+                              : "según el banco";
   document.getElementById("kpi-saldo-ini").textContent    = clpN(k.saldo_inicial);
   document.getElementById("kpi-ingresos").textContent     = clp(k.ingresos_cc);
   document.getElementById("kpi-gastos").textContent       = clp(k.egresos_cc);
@@ -909,6 +1281,7 @@ function renderOF() {
       scales:{ x:ejeY, y:{ ticks:{font:{size:10}} } } }
   });
 
+  pintarServicios();
   chartApilado("chOfCatMes", meses.map(mesLabel),
     apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses, m => m.cat || "Otros", TOP_CATS_OF));
 
@@ -1022,10 +1395,12 @@ function analizar(modo) {
   const prop = modo === "cerrado" ? 1 : o.dia / o.dias_mes;
 
   // Promedio mensual por categoría en los meses anteriores
+  // Lo comprado en el extranjero se analiza como categoría propia: así el alza
+  // en dólares se ve como tal y no diluida entre Suscripciones y Otros.
   const porCat = {}, catsPrev = {};
-  delMes.forEach(m => { porCat[m.cat] = (porCat[m.cat] || 0) + m.monto; });
+  delMes.forEach(m => { porCat[catDe(m)] = (porCat[catDe(m)] || 0) + m.monto; });
   gasto.filter(m => previos.includes(m.mes))
-       .forEach(m => { catsPrev[m.cat] = (catsPrev[m.cat] || 0) + m.monto; });
+       .forEach(m => { catsPrev[catDe(m)] = (catsPrev[catDe(m)] || 0) + m.monto; });
 
   const desvios = Object.keys(Object.assign({}, porCat, catsPrev)).map(cat => {
     const real = porCat[cat] || 0;
@@ -1240,7 +1615,7 @@ function renderAN() {
 }
 
 // ── Tabs ───────────────────────────────────────────────────────────
-const VISTAS = ["rt", "of", "an"];
+const VISTAS = ["rt", "of", "an", "rw"];
 VISTAS.forEach(v => {
   document.getElementById("tab-" + v).onclick = () => {
     VISTAS.forEach(x => {
@@ -1249,6 +1624,7 @@ VISTAS.forEach(v => {
     });
     // Chart.js necesita re-medir al mostrarse un contenedor que estaba oculto
     if (v === "an") renderAN();
+      if (v === "rw") renderRW();
   };
 });
 
