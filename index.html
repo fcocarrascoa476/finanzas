@@ -120,6 +120,13 @@
   .b-nueva{ background:#fef3c7; color:#92400e; } .b-activa{ background:#d1fae5; color:#065f46; }
   .tag-cat { display:inline-block; padding:1px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:.67rem; }
 
+  /* El selector va donde se ve su efecto, no al final */
+  .selector-esc { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+                  margin:2px 0 4px; }
+  .selector-esc-tit { font-size:.72rem; font-weight:700; text-transform:uppercase;
+                      letter-spacing:.4px; color:var(--muted); }
+  .selector-esc .chips { margin:0; }
+
   /* Escenarios de gasto */
   .esc-panel { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
                gap:12px; margin-top:14px; }
@@ -579,7 +586,12 @@
       </div>
     </div>
 
-    <div class="card-full">
+        <div class="selector-esc">
+      <span class="selector-esc-tit">Proyectar con</span>
+      <div class="chips" id="rw-esc-chips"></div>
+    </div>
+
+<div class="card-full">
       <div class="card-title">Cómo baja el saldo, mes a mes</div>
       <p class="an-nota" id="rw-nota-serie"></p>
       <div class="chart-wrap"><canvas id="chRwSerie"></canvas></div>
@@ -669,9 +681,8 @@
 
     <div class="card-full">
       <div class="card-title">Cuánto gastas realmente</div>
-      <p class="an-nota">No hay una sola respuesta. Elige con qué medida
-        proyectar: cuando las cuatro se parecen, el número es confiable.</p>
-      <div class="chips" id="rw-esc-chips"></div>
+      <p class="an-nota">De dónde sale la cifra con la que está calculado todo
+        lo de arriba. Cuando las cuatro medidas se parecen, el número es confiable.</p>
       <div class="esc-panel" id="rw-esc-panel"></div>
       <p class="an-nota" id="rw-esc-nota" style="margin:12px 0 0"></p>
     </div>
@@ -893,7 +904,9 @@ function initRango(pref, meses) {
 
 document.addEventListener("click", e => {
   const b = e.target.closest(".chip");
-  if (!b) return;
+  // Los chips de escenario también son .chip pero manejan su propio click y no
+  // llevan data-f. Sin esta guarda, este handler global reventaba en cada uno.
+  if (!b || !b.dataset.f) return;
   const f = b.dataset.f;
   document.querySelectorAll('.chip[data-f="' + f + '"]').forEach(x => x.classList.remove("on"));
   b.classList.add("on");
@@ -1185,7 +1198,13 @@ function renderRW() {
   // quedó en negativo tres meses seguidos teniendo 41 millones invertidos.
   // La proyección del mes manda sobre el aviso del próximo pago: mirar solo el
   // cargo siguiente daba un falso tranquilo cuando lo grande venía el día 26.
-  const mes = r.mes || {};
+  // La alarma sigue al escenario elegido. Antes no: al elegir "últimos 3
+  // meses" el runway pasaba de once a catorce meses y el aviso seguía pidiendo
+  // rescatar 3.700.000, calculado con otro supuesto. El número más accionable
+  // del tablero quedaba contradiciendo al que estaba justo debajo.
+  pintarEscenarios(r);
+  const eSel = (r.gasto_escenarios || [])[ESC_SEL] || null;
+  const mes = (eSel && eSel.alarma) ? eSel.alarma : (r.mes || {});
   const al = mes.alarma ? {
     nivel: mes.nivel,
     mensaje: "Con " + clp(r.saldo_cuenta) + " en la cuenta, el mes cierra en " +
@@ -1217,11 +1236,8 @@ function renderRW() {
     box.style.display = "none";
   }
 
-  // Los escenarios primero: definen con qué cifra se pinta todo lo demás.
-  pintarEscenarios(r);
-  // El elegido manda sobre meses, fecha y serie. Si no hay ninguno, se cae a
-  // lo que trae el runway, que es como funcionaba antes.
-  const eSel = (r.gasto_escenarios || [])[ESC_SEL] || null;
+  // El escenario elegido manda sobre meses, fecha y serie. Si no hay ninguno,
+  // se cae a lo que trae el runway, que es como funcionaba antes.
   const vista = eSel
     ? { meses: eSel.meses, fecha: eSel.fecha, burn: eSel.burn,
         meses_sin_hogar: eSel.meses_sin_hogar, serie: eSel.serie }
