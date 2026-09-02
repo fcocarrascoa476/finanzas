@@ -1036,13 +1036,27 @@ function pintarHeroRT(o) {
     : "Vas <b>" + clp(dif) + "</b> sobre tu ritmo habitual.";
   const proy = o.dias_mes && o.dia
     ? Math.round((o.gasto_mes || 0) / o.dia * o.dias_mes) : 0;
+  // Y el aviso que faltaba: este número está incompleto por construcción.
+  // Durante el mes se mide con notificaciones, y hay compras que no generan
+  // ninguna -el minimarket, la panadería, las que el banco resume como
+  // "COMPRA TARJETA DEBITO"-. Aparecen cuando llega la cartola, semanas
+  // después. No se inventa el monto: se avisa de que va a subir.
+  const h = (DATA.runway || {}).hueco;
+  const aviso = h
+    ? " Ojo: durante el mes solo se ven las compras que el banco notifica. " +
+      (h.confiable
+        ? "Cuando llegue la cartola suelen aparecer <b>" + clp(h.monto) + "</b> más."
+        : "Cuando llegue la cartola aparecen más movimientos &mdash;entre " +
+          clp(h.minimo) + " y " + clp(h.maximo) + " en los últimos meses&mdash;, " +
+          "así que este total va a subir.")
+    : "";
   document.getElementById("rt-hero-accion").innerHTML =
     "Llevas " + clp(o.gasto_mes) + " en " + o.n_movs + " movimientos. " +
     (temprano
       ? "A este ritmo cerrarías en <b>" + clp(proy) + "</b>, pero van pocos días: " +
         "una compra grande mueve la proyección entera."
       : "A este ritmo cerrarías en <b>" + clp(proy) + "</b>, contra un promedio de " +
-        clp(o.promedio_mes) + ".");
+        clp(o.promedio_mes) + ".") + aviso;
 }
 
 function pintarHeroOF(k) {
