@@ -120,6 +120,34 @@
   .b-nueva{ background:#fef3c7; color:#92400e; } .b-activa{ background:#d1fae5; color:#065f46; }
   .tag-cat { display:inline-block; padding:1px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:.67rem; }
 
+  /* El titular: la situación completa en una frase, antes de cualquier tabla.
+     Había que leer dos tarjetas y cruzarlas para saber cómo se está. */
+  .hero { background:linear-gradient(135deg,var(--navy),#2d5a8a); color:#fff;
+          border-radius:14px; padding:20px 22px; margin-bottom:14px; }
+  .hero-estado { font-size:.72rem; font-weight:700; text-transform:uppercase;
+                 letter-spacing:.6px; opacity:.85; }
+  .hero-frase { font-size:1.5rem; font-weight:800; line-height:1.25; margin:6px 0 0; }
+  .hero-frase b { color:#fbbf24; }
+  .hero-accion { font-size:.92rem; line-height:1.5; margin-top:10px;
+                 padding-top:10px; border-top:1px solid rgba(255,255,255,.22); }
+  .hero-accion b { color:#fbbf24; }
+  .hero.ok .hero-frase b, .hero.ok .hero-accion b { color:#6ee7b7; }
+  @media (max-width:520px){ .hero-frase { font-size:1.25rem; } }
+
+  /* El runway manda: los otros tres KPI son contexto */
+  #rw-card-meses { grid-column:1/-1; border-top-width:6px; }
+  #rw-card-meses .kpi-value { font-size:2.4rem; }
+  @media (min-width:760px){ #rw-card-meses { grid-column:span 2; } }
+
+  /* Los supuestos se pliegan: están para auditar, no para leer siempre */
+  details.card-full > summary { list-style:none; cursor:pointer;
+        font-size:.82rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:.5px; color:var(--navy); padding-bottom:8px;
+        border-bottom:2px solid var(--border); margin-bottom:12px; }
+  details.card-full > summary::-webkit-details-marker { display:none; }
+  details.card-full > summary::after { content:" ▸"; color:var(--muted); }
+  details.card-full[open] > summary::after { content:" ▾"; }
+
   /* Lo que hay que revisar */
   .anom { border:1px solid var(--border); border-left:4px solid var(--amber);
           border-radius:10px; padding:12px 14px; margin-bottom:10px; }
@@ -569,6 +597,12 @@
 
   <!-- ===================== VISTA 4: CUÁNTO ALCANZA ===================== -->
   <main id="vista-rw" style="display:none">
+    <div class="hero" id="rw-hero">
+      <div class="hero-estado" id="rw-hero-estado">&mdash;</div>
+      <div class="hero-frase" id="rw-hero-frase">&mdash;</div>
+      <div class="hero-accion" id="rw-hero-accion"></div>
+    </div>
+
     <div class="kpi-grid">
       <div class="kpi-card" id="rw-card-meses">
         <div class="kpi-label">Alcanza para</div>
@@ -592,8 +626,7 @@
       </div>
     </div>
 
-    <div class="card-full">
-      <div class="card-title">Cuánto gastas realmente</div>
+    <details class="card-full" open><summary>Cuánto gastas realmente</summary>
       <p class="an-nota">Elige con qué medida proyectar: cambia el runway, el
         gráfico y el aviso de rescate. Cuando las cuatro se parecen, el número
         es confiable.</p>
@@ -603,7 +636,7 @@
       </div>
       <div class="esc-panel" id="rw-esc-panel"></div>
       <p class="an-nota" id="rw-esc-nota" style="margin:12px 0 0"></p>
-    </div>
+    </details>
 
     <div class="card-full">
       <div class="card-title">Cómo baja el saldo, mes a mes</div>
@@ -666,8 +699,7 @@
       <div id="rw-goteo-lista"></div>
     </div>
 
-    <div class="card-full">
-      <div class="card-title">En qué se divide tu gasto</div>
+    <details class="card-full"><summary>En qué se divide tu gasto</summary>
       <p class="an-nota">No todo lo que no está comprometido es una decisión libre.
         Nadie decide dejar de comer: separar las cuatro cosas es lo que deja ver
         sobre cuánto se puede actuar de verdad. El "en 5 de 6 meses" de cada
@@ -679,10 +711,9 @@
         <tbody id="rw-grupos"></tbody>
       </table>
       <div id="rw-reparto-detalle" style="margin-top:16px"></div>
-    </div>
+    </details>
 
-    <div class="card-full">
-      <div class="card-title">Qué es lo que ya está decidido</div>
+    <details class="card-full"><summary>Qué es lo que ya está decidido</summary>
       <p class="an-nota">Estos pagos salen igual, decidas lo que decidas. El
         resto de tu gasto es sobre lo que sí puedes actuar.</p>
       <table>
@@ -690,12 +721,11 @@
         <tbody id="rw-comprometido-detalle"></tbody>
       </table>
       <p class="an-nota" id="rw-cuotas-nota" style="margin-top:12px"></p>
-    </div>
+    </details>
 
-    <div class="card-full">
-      <div class="card-title">Tu gasto mes a mes</div>
+    <details class="card-full"><summary>Tu gasto mes a mes</summary>
       <div class="chart-wrap"><canvas id="chRwGasto"></canvas></div>
-    </div>
+    </details>
 
     <div class="chart-grid">
       
@@ -717,10 +747,9 @@
       <div id="rw-anomalias"></div>
     </div>
 
-    <div class="card-full">
-      <div class="card-title">Lo que hay que tener presente</div>
+    <details class="card-full"><summary>Lo que hay que tener presente</summary>
       <div id="rw-notas"></div>
-    </div>
+    </details>
   </main>
 </div>
 
@@ -938,6 +967,18 @@ function initRango(pref, meses) {
   document.getElementById(pref + "-desde").innerHTML = opts("Desde: todo");
   document.getElementById(pref + "-hasta").innerHTML = opts("Hasta: hoy");
 }
+
+// Un canvas dentro de un <details> cerrado se dibuja con tamaño cero: al
+// abrirlo queda una franja aplastada. Chart.js necesita que le digan que ya
+// hay espacio.
+document.addEventListener("toggle", e => {
+  const d = e.target;
+  if (!d.open || d.tagName !== "DETAILS") return;
+  d.querySelectorAll("canvas").forEach(c => {
+    const ch = (window.Chart && Chart.getChart) ? Chart.getChart(c) : null;
+    if (ch) ch.resize();
+  });
+}, true);
 
 document.addEventListener("click", e => {
   const b = e.target.closest(".chip");
@@ -1336,6 +1377,27 @@ function renderRW() {
         meses_sin_hogar: eSel.meses_sin_hogar, serie: eSel.serie }
     : r;
 
+  // El titular: cómo estás y qué hacer, en una frase.
+  //
+  // Antes había que leer "Alcanza para 11 meses" en una tarjeta, buscar la
+  // alarma en otra y cruzarlas mentalmente para saber si el mes está resuelto.
+  const heroBox = document.getElementById("rw-hero");
+  const mesesTxt = vista.meses === null ? "sin límite"
+    : vista.meses + (vista.meses === 1 ? " mes" : " meses");
+  const holgado = vista.meses === null || vista.meses > 12;
+  heroBox.className = "hero" + (holgado ? " ok" : "");
+  document.getElementById("rw-hero-estado").textContent =
+    vista.meses === null ? "Tu flujo alcanza"
+    : vista.meses <= 6 ? "Situación apretada"
+    : vista.meses <= 12 ? "Con margen, pero el reloj corre" : "Con holgura";
+  document.getElementById("rw-hero-frase").innerHTML =
+    "Te alcanza para <b>" + mesesTxt + "</b>" +
+    (vista.fecha ? ", hasta " + esc(vista.fecha) : "") + ".";
+  document.getElementById("rw-hero-accion").innerHTML = mes.alarma
+    ? "Este mes necesitas rescatar <b>" + clp(mes.rescatar) + "</b> de la " +
+      "inversión, pidiéndolo antes del <b>" + esc(mes.pedir_antes_de || "") + "</b>."
+    : "Este mes no necesitas mover plata de la inversión.";
+
   // El número principal: el escenario prudente, sin contar la ayuda de terceros
   const card = document.getElementById("rw-card-meses");
   document.getElementById("rw-meses").textContent =
@@ -1345,9 +1407,15 @@ function renderRW() {
     ? "hasta " + vista.fecha + (vista.meses_sin_hogar && vista.meses_sin_hogar !== vista.meses
         ? " · " + vista.meses_sin_hogar + " sin el ingreso de las terapias" : "")
     : "el flujo alcanza sin consumir fondos";
-  // Menos de 6 meses es zona de decisión, no de observación
-  card.style.borderTopColor = vista.meses === null ? "var(--green)"
-    : vista.meses <= 6 ? "var(--red)" : vista.meses <= 12 ? "var(--amber)" : "var(--green)";
+  // Menos de 6 meses es zona de decisión, no de observación. El color del
+  // borde solo pasaba desapercibido: ahora va también la palabra.
+  const sem = vista.meses === null ? ["var(--green)", "holgado"]
+    : vista.meses <= 6 ? ["var(--red)", "crítico"]
+    : vista.meses <= 12 ? ["var(--amber)", "atención"] : ["var(--green)", "estable"];
+  card.style.borderTopColor = sem[0];
+  const lbl = card.querySelector(".kpi-label");
+  if (lbl) lbl.innerHTML = "Alcanza para <span style='color:" + sem[0] +
+    ";font-weight:800'>· " + sem[1] + "</span>";
 
   // La cifra proyectada NO es lo que se gastó en ningún mes: es la medida
   // elegida arriba. Decía "Gasto del mes" y mostraba $4.420.585 cuando agosto
