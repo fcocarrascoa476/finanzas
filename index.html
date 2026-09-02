@@ -148,6 +148,12 @@
   details.card-full > summary::after { content:" ▸"; color:var(--muted); }
   details.card-full[open] > summary::after { content:" ▾"; }
 
+  .seg { display:flex; gap:10px; align-items:flex-start; padding:9px 0;
+         border-bottom:1px solid var(--border); font-size:.85rem; line-height:1.5; }
+  .seg:last-child { border-bottom:0; }
+  .seg-punto { width:9px; height:9px; border-radius:50%; flex:0 0 9px; margin-top:6px; }
+  .seg-mal { color:var(--navy); }
+
   /* Lo que hay que revisar */
   .anom { border:1px solid var(--border); border-left:4px solid var(--amber);
           border-radius:10px; padding:12px 14px; margin-bottom:10px; }
@@ -663,6 +669,13 @@
         <thead><tr><th>Cuándo</th><th>Qué se paga</th><th class="num">Monto</th></tr></thead>
         <tbody id="rw-alerta-detalle"></tbody>
       </table>
+    </div>
+
+    <div class="card-full" id="rw-card-seguimiento" style="display:none">
+      <div class="card-title">Lo que el tablero te recomendó</div>
+      <p class="an-nota">Se verifica mirando la cuenta, no preguntándote: un
+        rescate deja un abono. Si no aparece, quedó sin hacer.</p>
+      <div id="rw-seguimiento"></div>
     </div>
 
     <div class="card-full" id="rw-card-rescate">
@@ -1292,6 +1305,39 @@ function pintarAnomalias(r) {
     "</div>").join("");
 }
 
+// Lo recomendado y lo que se hizo.
+//
+// El tablero decía "rescata 3.750.000 antes del 10" y ahí terminaba. Nadie
+// comprobaba el 11 si pasó, y al mes siguiente repetía el aviso como si fuera
+// nuevo. La verificación mira la cuenta: un rescate deja un abono grande.
+function pintarSeguimiento(r) {
+  const sg = r.seguimiento;
+  const card = document.getElementById("rw-card-seguimiento");
+  if (!card) return;
+  const hay = sg && ((sg.pendientes || []).length || (sg.vencidas || []).length ||
+                     sg.cumplidas);
+  if (!hay) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const fila = (txt, estado, color) =>
+    "<div class='seg seg-" + estado + "'><span class='seg-punto' style='background:" +
+    color + "'></span><span>" + txt + "</span></div>";
+
+  let html = "";
+  for (const x of (sg.vencidas || []))
+    html += fila("Quedó sin hacer: rescatar <b>" + clp(x.monto) + "</b> antes del " +
+                 esc(x.antes_de) + ". No aparece en la cuenta.", "mal", "var(--red)");
+  for (const x of (sg.pendientes || []))
+    html += fila("Pendiente: rescatar <b>" + clp(x.monto) + "</b> antes del " +
+                 esc(x.antes_de) + ".", "pend", "var(--amber)");
+  if (sg.cumplidas)
+    html += fila("<b>" + sg.cumplidas + "</b> recomendaci" +
+                 (sg.cumplidas === 1 ? "ón cumplida" : "ones cumplidas") +
+                 (sg.tasa != null ? " · " + sg.tasa + "% de las que vencieron" : ""),
+                 "ok", "var(--green)");
+  document.getElementById("rw-seguimiento").innerHTML = html;
+}
+
 // Cada cuánto conviene sacar plata del fondo.
 //
 // Es la decisión que reemplaza a "reordenar los pagos", que se analizó y no
@@ -1585,6 +1631,7 @@ function renderRW() {
       : "";
   } else { notaCuo.textContent = ""; }
 
+  pintarSeguimiento(r);
   pintarRescate(r);
   pintarAnomalias(r);
   pintarOptimizar(r);
