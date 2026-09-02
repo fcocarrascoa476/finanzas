@@ -554,15 +554,6 @@
 
   <!-- ===================== VISTA 4: CUÁNTO ALCANZA ===================== -->
   <main id="vista-rw" style="display:none">
-    <div class="card-full" id="rw-alerta" style="display:none;border-left:5px solid var(--muted)">
-      <div class="card-title" id="rw-alerta-titulo"></div>
-      <p id="rw-alerta-msg" style="font-size:1.02rem;margin:6px 0 12px"></p>
-      <table>
-        <thead><tr><th>Cuándo</th><th>Qué se paga</th><th class="num">Monto</th></tr></thead>
-        <tbody id="rw-alerta-detalle"></tbody>
-      </table>
-    </div>
-
     <div class="kpi-grid">
       <div class="kpi-card" id="rw-card-meses">
         <div class="kpi-label">Alcanza para</div>
@@ -586,15 +577,42 @@
       </div>
     </div>
 
-        <div class="selector-esc">
-      <span class="selector-esc-tit">Proyectar con</span>
-      <div class="chips" id="rw-esc-chips"></div>
+    <div class="card-full">
+      <div class="card-title">Cuánto gastas realmente</div>
+      <p class="an-nota">Elige con qué medida proyectar: cambia el runway, el
+        gráfico y el aviso de rescate. Cuando las cuatro se parecen, el número
+        es confiable.</p>
+      <div class="selector-esc">
+        <span class="selector-esc-tit">Proyectar con</span>
+        <div class="chips" id="rw-esc-chips"></div>
+      </div>
+      <div class="esc-panel" id="rw-esc-panel"></div>
+      <p class="an-nota" id="rw-esc-nota" style="margin:12px 0 0"></p>
     </div>
 
-<div class="card-full">
+    <div class="card-full">
       <div class="card-title">Cómo baja el saldo, mes a mes</div>
       <p class="an-nota" id="rw-nota-serie"></p>
       <div class="chart-wrap"><canvas id="chRwSerie"></canvas></div>
+    </div>
+
+    <div class="card-full" id="rw-alerta" style="display:none;border-left:5px solid var(--muted)">
+      <div class="card-title" id="rw-alerta-titulo"></div>
+      <p id="rw-alerta-msg" style="font-size:1.02rem;margin:6px 0 12px"></p>
+      <table>
+        <thead><tr><th>Cuándo</th><th>Qué se paga</th><th class="num">Monto</th></tr></thead>
+        <tbody id="rw-alerta-detalle"></tbody>
+      </table>
+    </div>
+
+    <div class="card-full" id="rw-card-rescate">
+      <div class="card-title">Cuándo sacar plata de la inversión</div>
+      <p class="an-nota">Evalué mover los pagos a después de que entra la plata
+        y <b>no sirve</b>: con el mes en déficit, el saldo final es el mismo se
+        pague el 8 o el 26 &mdash;y adelantarlos empeora, porque el día crítico
+        se corre del 12 al 8. Lo que sí puedes decidir es cada cuánto rescatar.</p>
+      <div id="rw-rescate"></div>
+      <p class="an-nota" id="rw-rescate-nota" style="margin-top:12px"></p>
     </div>
 
     <div class="card-full">
@@ -604,24 +622,6 @@
         podría ahorrar y cuánto runway agrega.</p>
       <div id="rw-palancas"></div>
       <div class="palanca-total" id="rw-palancas-total"></div>
-    </div>
-
-    <div class="chart-grid">
-      <div class="card">
-        <div class="card-title">Si recortas lo que puedes recortar</div>
-        <table>
-          <thead><tr><th>Recorte</th><th class="num">Gasto/mes</th><th class="num">Ahorro</th><th class="num">Alcanza</th></tr></thead>
-          <tbody id="rw-escenarios"></tbody>
-        </table>
-      </div>
-      <div class="card">
-        <div class="card-title">De dónde salen los fondos</div>
-        <table>
-          <thead><tr><th>Origen</th><th class="num">Monto</th><th>Actualizado</th></tr></thead>
-          <tbody id="rw-fuentes"></tbody>
-        </table>
-        <p class="an-nota" id="rw-aviso-viejo" style="margin-top:12px"></p>
-      </div>
     </div>
 
     <div class="card-full">
@@ -655,7 +655,10 @@
       <div class="card-title">En qué se divide tu gasto</div>
       <p class="an-nota">No todo lo que no está comprometido es una decisión libre.
         Nadie decide dejar de comer: separar las cuatro cosas es lo que deja ver
-        sobre cuánto se puede actuar de verdad.</p>
+        sobre cuánto se puede actuar de verdad. El "en 5 de 6 meses" de cada
+        categoría dice en cuántos meses apareció ese gasto &mdash;no son cuotas
+        por pagar&mdash;: lo que ocurre casi todos los meses es parte de tu
+        ritmo, lo que ocurre poco es esporádico.</p>
       <table>
         <thead><tr><th>Grupo</th><th>Qué es</th><th class="num">Al mes</th></tr></thead>
         <tbody id="rw-grupos"></tbody>
@@ -679,12 +682,16 @@
       <div class="chart-wrap"><canvas id="chRwGasto"></canvas></div>
     </div>
 
-    <div class="card-full">
-      <div class="card-title">Cuánto gastas realmente</div>
-      <p class="an-nota">De dónde sale la cifra con la que está calculado todo
-        lo de arriba. Cuando las cuatro medidas se parecen, el número es confiable.</p>
-      <div class="esc-panel" id="rw-esc-panel"></div>
-      <p class="an-nota" id="rw-esc-nota" style="margin:12px 0 0"></p>
+    <div class="chart-grid">
+      
+      <div class="card">
+        <div class="card-title">De dónde salen los fondos</div>
+        <table>
+          <thead><tr><th>Origen</th><th class="num">Monto</th><th>Actualizado</th></tr></thead>
+          <tbody id="rw-fuentes"></tbody>
+        </table>
+        <p class="an-nota" id="rw-aviso-viejo" style="margin-top:12px"></p>
+      </div>
     </div>
 
     <div class="card-full">
@@ -1109,6 +1116,40 @@ function pintarEscenarios(r) {
     "</span>";
 }
 
+// Cada cuánto conviene sacar plata del fondo.
+//
+// Es la decisión que reemplaza a "reordenar los pagos", que se analizó y no
+// aporta nada mientras el mes cierre en déficit. Aquí el intercambio sí es
+// real y medible: menos trámites contra menos rentabilidad.
+function pintarRescate(r) {
+  const x = r.rescate;
+  const card = document.getElementById("rw-card-rescate");
+  if (!card) return;
+  if (!x || !x.opciones || !x.opciones.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  document.getElementById("rw-rescate").innerHTML =
+    "<table><thead><tr><th>Cada cuánto</th><th class='num'>Cuánto sacar</th>" +
+    "<th class='num'>Al año</th><th class='num'>Te cuesta</th></tr></thead><tbody>" +
+    x.opciones.map((o, i) =>
+      "<tr" + (i === 0 ? " style='background:rgba(16,185,129,.08)'" : "") + ">" +
+      "<td style='font-weight:600'>" + (o.cada === 1 ? "Todos los meses"
+        : "Cada " + o.cada + " meses") + "</td>" +
+      "<td class='num'>" + clp(o.monto) + "</td>" +
+      "<td class='num'>" + o.al_anno + " veces</td>" +
+      "<td class='num'>" + (o.sobrecosto ? clp(o.sobrecosto) + "/año" : "—") +
+      "</td></tr>").join("") + "</tbody></table>";
+
+  const dia = x.opciones[0].dia;
+  document.getElementById("rw-rescate-nota").innerHTML =
+    "Tu déficit es <b>" + clp(x.deficit) + " al mes</b> y la inversión cubre " +
+    "<b>" + x.meses_cubiertos + " meses</b> de ese ritmo. Sacar de a poco deja " +
+    "más plata rindiendo; sacar de a mucho ahorra trámites y te cuesta lo que " +
+    "dice la última columna. <b>Hazlo el día " + dia + "</b>, dos días después " +
+    "de que entra la plata: una fecha fija se cumple, reaccionar a una alarma " +
+    "se posterga.";
+}
+
 // Dónde se va la plata, el goteo y qué hacer al respecto.
 //
 // El orden importa: primero se ve el hecho (dónde va), después el patrón que
@@ -1138,7 +1179,7 @@ function pintarOptimizar(r) {
         "<div class='cm-meta'>" +
           "<span class='et " + (ET[c.tipo] || "et-uni") + "'>" + esc(c.tipo) + "</span> · " +
           c.veces + (c.veces === 1 ? " compra" : " compras") +
-          " en " + c.meses + " de " + c.de + " meses · " +
+          " · apareció en " + c.meses + " de " + c.de + " meses · " +
           "ticket " + clp(c.ticket) +
         "</div></div>";
     }).join("");
@@ -1309,9 +1350,11 @@ function renderRW() {
         "<div style='font-weight:700;font-size:.82rem;text-transform:uppercase;" +
         "letter-spacing:.04em;margin-bottom:6px'>" + g + " · " + clp(suma) + "</div>" +
         "<div style='font-size:.82rem;line-height:1.7'>" +
-        filas.map(x => "<span style='display:inline-block;margin-right:14px'>" +
+        filas.map(x => "<span style='display:inline-block;margin-right:14px' " +
+          "title='Apareció en " + x.meses + " de los últimos " + x.de + " meses'>" +
           esc(x.categoria) + " <b>" + clp(x.monto) + "</b>" +
-          "<span style='color:var(--muted)'> " + x.meses + "/" + x.de + "</span></span>").join("") +
+          "<span style='color:var(--muted)'> en " + x.meses + " de " + x.de +
+          " meses</span></span>").join("") +
         "</div></div>";
     }).join("");
 
@@ -1339,6 +1382,7 @@ function renderRW() {
       : "";
   } else { notaCuo.textContent = ""; }
 
+  pintarRescate(r);
   pintarOptimizar(r);
 
   // Cómo baja el saldo
@@ -1368,14 +1412,9 @@ function renderRW() {
     },
   });
 
-  // Escenarios de recorte
-  document.getElementById("rw-escenarios").innerHTML = (r.escenarios || []).map(e =>
-    "<tr" + (e.recorte === 0 ? " style='opacity:.65'" : "") + ">" +
-    "<td>" + (e.recorte === 0 ? "Como vas" : e.recorte + "%") + "</td>" +
-    "<td class='num'>" + clp(e.burn) + "</td>" +
-    "<td class='num'>" + (e.ahorro_mes ? clp(e.ahorro_mes) : "—") + "</td>" +
-    "<td class='num' style='font-weight:600'>" +
-      (e.meses === null ? "sin límite" : e.meses + " meses") + "</td></tr>").join("");
+  // La tabla de recortes por porcentaje se quitó: repetía lo que "Qué puedes
+  // hacer" ya dice mucho mejor -palancas concretas en vez de un 15% abstracto-
+  // y encima quedaba con el gasto viejo, sin seguir al escenario elegido.
 
   // De dónde salen los fondos
   const viejo = r.inversiones_dias !== null && r.inversiones_dias > 45;
