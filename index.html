@@ -507,7 +507,7 @@
 
     <div class="card-full">
       <div class="card-title">Cuánto gastaste cada mes
-        <span style="color:var(--muted);font-weight:400;text-transform:none">· total, últimos meses</span></div>
+        <span style="color:var(--muted);font-weight:400;text-transform:none">· gasto total, todos los medios de pago</span></div>
       <p class="an-nota" id="of-total-nota"></p>
       <div class="chart-wrap"><canvas id="chOfTotal"></canvas></div>
     </div>
@@ -522,22 +522,23 @@
 
     <div class="chart-grid">
       <div class="card">
-        <div class="card-title">Contado vs Cuotas (tarjeta)</div>
+        <div class="card-title">Contado vs Cuotas <span style="color:var(--muted);font-weight:400;text-transform:none">· solo tarjeta de crédito</span></div>
         <div class="chart-wrap-sm"><canvas id="chOfTipo"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-title">Gastos TC por categoría</div>
+        <div class="card-title">Gastos por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· solo tarjeta de crédito</span></div>
         <div class="chart-wrap-sm"><canvas id="chOfCat"></canvas></div>
       </div>
     </div>
 
     <div class="card-full">
       <div class="card-title">Compromisos de cuotas &mdash; próximos meses</div>
+      <p class="an-nota" id="of-cuotas-nota"></p>
       <div class="chart-wrap"><canvas id="chartProy"></canvas></div>
     </div>
 
     <div class="card-full">
-      <div class="card-title">Evolución por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· top 6 + otros (tarjeta)</span></div>
+      <div class="card-title">Evolución por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· solo tarjeta de crédito</span> <span style="color:var(--muted);font-weight:400;text-transform:none">· top 6 + otros (tarjeta)</span></div>
       <div class="chart-wrap"><canvas id="chOfCatMes"></canvas></div>
     </div>
 
@@ -1166,16 +1167,31 @@ function renderRT() {
     if (tipo === "cuotas" && !(m.medio === "Credito" && m.cuotas > 0)) return false;
     return true;
   });
-  const movs = mes === "todos" ? hist : hist.filter(m => m.mes === mes);
-
+  // Los meses anteriores se recortan al mismo día que lleva el mes en curso.
+  //
+  // Al elegir "Ago 26" se mostraba el mes COMPLETO -2.929.481- y el de arriba
+  // seguía siendo el día 2 de septiembre: se comparaba un mes entero contra
+  // dos días. Esta pestaña existe para responder "cómo voy", y para eso los
+  // períodos tienen que estar cortados a la misma altura. El mes completo vive
+  // en "Cierre mensual", que es la vista de meses cerrados.
+  const diaCorte = o.dia || 31;
+  const hastaElDia = m => {
+    const d = parseInt(String(m.fecha || "").slice(0, 2), 10);
+    return !d || d <= diaCorte;
+  };
   const esActual = mes === o.mes_actual;
+  const recorta = mes !== "todos" && !esActual;
+  const movs = mes === "todos" ? hist
+    : hist.filter(m => m.mes === mes && (!recorta || hastaElDia(m)));
+
   const total = movs.reduce((a,m) => a + m.monto, 0);
   document.getElementById("rt-gasto").textContent = clp(total);
   const filtrado = (tipo !== "todos" || tar !== "todas" || org !== "todos") ? " (filtrado)" : "";
   document.getElementById("rt-gasto-sub").textContent =
     (mes === "todos" ? "últimos " + meses.length + " meses"
      : esActual ? o.mes_label + " · día " + o.dia + " de " + o.dias_mes
-     : "mes cerrado " + (o.meses.find(x => x.v === mes) || {}).label) + filtrado;
+     : (o.meses.find(x => x.v === mes) || {}).label + " · hasta el día " +
+       diaCorte + ", igual que el mes en curso") + filtrado;
 
   const cardT = document.getElementById("rt-card-tend");
   if (esActual && o.esperado) {
@@ -1944,6 +1960,25 @@ function pintarTabla({filas, cuerpo, contador, mas, cols, pref, fila, todas}) {
 function render() { renderRT(); renderOF(); }
 
 // ── VISTA 2: cierre mensual ────────────────────────────────────────
+
+// Quita el mes en curso de una serie con labels tipo "Ago 26".
+//
+// La pestaña "Cierre mensual" muestra meses cerrados. Dejar el mes en curso
+// -que el día 2 lleva dos días de movimientos- pinta una barra minúscula al
+// final que se lee como un desplome del gasto o de los ingresos.
+function _sinMesEnCurso(serie) {
+  if (!serie || !serie.labels || !serie.labels.length) return serie;
+  const hoy = new Date();
+  const MES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  const actual = MES[hoy.getMonth()] + " " + String(hoy.getFullYear()).slice(-2);
+  const i = serie.labels.indexOf(actual);
+  if (i < 0) return serie;
+  const corte = a => Array.isArray(a) ? a.slice(0, i) : a;
+  const out = {};
+  for (const k in serie) out[k] = corte(serie[k]);
+  return out;
+}
+
 function renderOF() {
   const k = DATA.kpis, ex = DATA.oficial_extra || {movs:[], tarjetas:[]};
   pintarHeroOF(k);
@@ -1953,10 +1988,27 @@ function renderOF() {
   //
   // El mes en curso va aparte y en gris: lleva dos dias y ponerlo junto a los
   // cerrados se lee como una caida enorme del gasto.
-  const gm = (DATA.runway || {}).gastos_mes || {};
+  // El total se arma con las MISMAS piezas que los desgloses de esta pestaña
+  // -las compras del feed mas las cuentas de Sencillito- para que las barras
+  // sumen lo que dicen las de abajo.
+  //
+  // Antes venia de runway.gastos_mes, que mide la caja de la cartola: agosto
+  // salia 3,3M aqui y 2,9M en el desglose por categoria. Dos cifras del mismo
+  // mes en la misma pantalla. La de la cartola es mas completa y sigue siendo
+  // la del runway, donde se explica; aqui manda la coherencia interna.
+  const gm = {};
+  ((DATA.on_time || {}).feed || []).forEach(m => {
+    if (m.gasto) gm[m.mes] = (gm[m.mes] || 0) + m.monto;
+  });
+  const _serv = DATA.servicios || {};
+  (_serv.meses || []).forEach((mm, i) => {
+    const t = (_serv.series || []).reduce((a, x) => a + (x.values[i] || 0), 0);
+    if (t) gm[mm] = (gm[mm] || 0) + t;
+  });
   const enCurso = mesEnCurso();
-  const mesesTot = Object.keys(gm).sort().slice(-7);
-  const cerrados = mesesTot.filter(x => x < enCurso);
+  // Esta es la vista de meses CERRADOS: el mes en curso no entra.
+  const mesesTot = Object.keys(gm).sort().filter(x => x < enCurso).slice(-6);
+  const cerrados = mesesTot;
   const prom = cerrados.length
     ? cerrados.reduce((a, x) => a + gm[x], 0) / cerrados.length : 0;
   chart("chOfTotal", {
@@ -1975,8 +2027,8 @@ function renderOF() {
   const notaTot = document.getElementById("of-total-nota");
   if (notaTot) notaTot.innerHTML = cerrados.length
     ? "Promedio de los " + cerrados.length + " meses cerrados: <b>" + clp(prom) +
-      "</b>. En rojo los que superaron ese promedio" +
-      (mesesTot.some(x => x >= enCurso) ? "; el último va en curso y por eso está en gris." : ".")
+      "</b>. En rojo los que superaron ese promedio. Suma las compras del " +
+      "período más las cuentas de Sencillito, igual que los gráficos de abajo."
     : "";
   document.getElementById("kpi-comprometido").textContent = clp(k.total_comprometido);
   document.getElementById("kpi-n-cuotas").textContent     = k.n_activas + " activas + " + k.n_nuevas + " nuevas";
@@ -2029,32 +2081,22 @@ function renderOF() {
   });
 
   pintarServicios();
-  // Evolución por categoría, con las cuentas de Sencillito como un bloque.
+  // Este gráfico sale del ESTADO DE CUENTA DE LA TARJETA, no del gasto total.
   //
-  // En la cartola son una transferencia sola y en este gráfico desaparecían
-  // repartidas o ausentes: el dividendo, la luz, el agua y el gas son el
-  // compromiso más grande del mes y no se veían. Vienen de su propia hoja, así
-  // que se inyectan como movimientos sintéticos de una categoría única.
-  const CAT_SENCILLITO = "Cuentas (Sencillito)";
-  const serv = DATA.servicios || {};
-  const movsServ = [];
-  if (serv.disponible && serv.series && serv.labels) {
-    // series viene como [{cat, values}] alineado a serv.meses
-    (serv.meses || []).forEach((mm, i) => {
-      const total = (serv.series || []).reduce((a, x) => a + (x.values[i] || 0), 0);
-      if (total > 0) movsServ.push({mes: mm, cat: CAT_SENCILLITO, monto: total, gasto: true});
-    });
-  }
-  const histConServ = hist.filter(m => meses.indexOf(m.mes) >= 0).concat(
-    movsServ.filter(m => meses.indexOf(m.mes) >= 0));
-  const catsOf = TOP_CATS_OF.includes(CAT_SENCILLITO)
-    ? TOP_CATS_OF : [CAT_SENCILLITO].concat(TOP_CATS_OF);
+  // Un intento anterior le inyectó aquí las cuentas de Sencillito y estaba mal:
+  // se pagan por transferencia desde la cuenta corriente y no aparecen en
+  // ninguna factura de tarjeta. Sencillito vive en "Tendencia por gran
+  // categoría", que sí mide el gasto completo.
   chartApilado("chOfCatMes", meses.map(mesLabel),
-    apilarPorMes(histConServ, meses, m => m.cat || "Otros", catsOf));
+    apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses,
+                 m => m.cat || "Otros", TOP_CATS_OF));
 
   // Saldo al cierre de cada mes. El punto es el último movimiento cargado de
   // ese mes: si la cartola no llega a fin de mes, el tooltip lo dice.
-  const sal = DATA.cc_saldos || {labels:[], saldos:[], fechas:[]};
+  //
+  // Todo lo de esta pestaña excluye el mes en curso: un mes de dos días junto
+  // a meses completos se lee como una caída y no lo es.
+  const sal = _sinMesEnCurso(DATA.cc_saldos || {labels:[], saldos:[], fechas:[]});
   if (sal.labels.length) {
     const ult = sal.fechas[sal.fechas.length-1];
     document.getElementById("of-saldo-nota").textContent =
@@ -2080,12 +2122,14 @@ function renderOF() {
     });
   }
 
-  if (DATA.cc_mensual.labels.length) {
+  // Sin el mes en curso, como el resto de esta pestaña
+  const ccm = _sinMesEnCurso(DATA.cc_mensual);
+  if (ccm.labels.length) {
     chart("chartCC", {
       type:"bar",
-      data:{ labels:DATA.cc_mensual.labels, datasets:[
-        { label:"Ingresos", data:DATA.cc_mensual.abonos, backgroundColor:"rgba(16,185,129,.75)", borderRadius:4 },
-        { label:"Egresos",  data:DATA.cc_mensual.cargos, backgroundColor:"rgba(239,68,68,.72)", borderRadius:4 }] },
+      data:{ labels:ccm.labels, datasets:[
+        { label:"Ingresos", data:ccm.abonos, backgroundColor:"rgba(16,185,129,.75)", borderRadius:4 },
+        { label:"Egresos",  data:ccm.cargos, backgroundColor:"rgba(239,68,68,.72)", borderRadius:4 }] },
       options:{ responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{position:"top"}, tooltip:{ callbacks:{ label:c => " " + c.dataset.label + ": " + clp(c.raw) } } },
         scales:{ x:{grid:{display:false}}, y:ejeY } }
@@ -2094,6 +2138,22 @@ function renderOF() {
 
   if (DATA.proyeccion.labels.length) {
     const pMax = Math.max(...DATA.proyeccion.totales);
+  // La suma de lo que queda por facturar. Es el numero que se compara contra
+  // la web del banco para saber si el sistema tiene toda la deuda cargada.
+  const pr = DATA.proyeccion || {labels: [], totales: []};
+  const notaCuo = document.getElementById("of-cuotas-nota");
+  if (notaCuo) {
+    const tot = pr.total_periodo || (pr.totales || []).reduce((a, x) => a + x, 0);
+    const nb = pr.n_banco || 0;
+    notaCuo.innerHTML = pr.labels.length
+      ? "Quedan <b>" + clp(tot) + "</b> por facturar en " + pr.labels.length +
+        " meses, desde " + esc(pr.labels[0]) + " hasta " +
+        esc(pr.labels[pr.labels.length - 1]) + ". " +
+        (nb ? "Los primeros " + nb + " salen de la proyección del banco; el resto " +
+              "se calcula con las cuotas cargadas." : "Calculado con las cuotas cargadas.")
+      : "No quedan cuotas por facturar.";
+  }
+
     chart("chartProy", {
       type:"bar",
       data:{ labels:DATA.proyeccion.labels, datasets:[{ data:DATA.proyeccion.totales,
@@ -2194,7 +2254,7 @@ function analizar(modo) {
   const real = delMes.reduce((a,m) => a + m.monto, 0);
 
   // Flujo de caja del mes objetivo (cuenta corriente), si la cartola ya llegó
-  const cc = DATA.cc_mensual || {labels:[], abonos:[], cargos:[]};
+  const cc = _sinMesEnCurso(DATA.cc_mensual || {labels:[], abonos:[], cargos:[]});
   const iCC = cc.labels.indexOf(mesLabel(objetivo));
   const flujo = iCC >= 0
     ? {ingresos: cc.abonos[iCC], egresos: cc.cargos[iCC],
@@ -2284,9 +2344,19 @@ function renderAN() {
   // Sin el mes en curso: vive en la pestaña de meses CERRADOS, y una barra de
   // dos días junto a seis meses completos se lee como un desplome del gasto.
   const mesesCerrados = a.meses.filter(m => m < mesEnCurso());
-  const gastoTodo = (o.feed || []).filter(m => m.gasto && mesesCerrados.includes(m.mes));
+  // Con las cuentas de Sencillito, igual que los otros gráficos de la pestaña:
+  // sin ellas las barras sumaban 2.743.392 donde el total decía 3.495.239.
+  const servG = DATA.servicios || {};
+  const movsServG = [];
+  (servG.meses || []).forEach((mm, i) => {
+    const t = (servG.series || []).reduce((a, x) => a + (x.values[i] || 0), 0);
+    if (t > 0) movsServG.push({mes: mm, grupo: "Cuentas (Sencillito)", monto: t, gasto: true});
+  });
+  const gastoTodo = (o.feed || []).filter(m => m.gasto && mesesCerrados.includes(m.mes))
+    .concat(movsServG.filter(m => mesesCerrados.includes(m.mes)));
+  const gruposConServ = ["Cuentas (Sencillito)"].concat(GRUPOS);
   chartApilado("chAnGrupos", mesesCerrados.map(mesLabel),
-    apilarPorMes(gastoTodo, mesesCerrados, m => m.grupo || "Otros", GRUPOS));
+    apilarPorMes(gastoTodo, mesesCerrados, m => m.grupo || "Otros", gruposConServ));
 
   // Sparkline del gasto mensual, con el mes en curso destacado
   chart("chAnRitmo", {
