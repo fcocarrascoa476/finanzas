@@ -259,6 +259,12 @@
 
   <!-- ===================== VISTA 1: MES EN CURSO ===================== -->
   <main id="vista-rt">
+    <div class="hero" id="rt-hero">
+      <div class="hero-estado" id="rt-hero-estado">&mdash;</div>
+      <div class="hero-frase" id="rt-hero-frase">&mdash;</div>
+      <div class="hero-accion" id="rt-hero-accion"></div>
+    </div>
+
 <div class="filtros">
       <div class="fgrupo">
         <span class="lbl">Qué analizar</span>
@@ -439,6 +445,12 @@
 
   <!-- ===================== VISTA 2: CIERRE MENSUAL ===================== -->
   <main id="vista-of" style="display:none">
+    <div class="hero" id="of-hero">
+      <div class="hero-estado" id="of-hero-estado">&mdash;</div>
+      <div class="hero-frase" id="of-hero-frase">&mdash;</div>
+      <div class="hero-accion" id="of-hero-accion"></div>
+    </div>
+
 <div class="card-full">
       <div class="card-title">Tendencia por gran categoría
         <span style="color:var(--muted);font-weight:400;text-transform:none">· 6 meses</span></div>
@@ -995,8 +1007,65 @@ document.addEventListener("click", e => {
 });
 
 // ── VISTA 1: mes en curso ──────────────────────────────────────────
+// El titular de cada pestaña: la conclusión antes que el detalle.
+//
+// "Cuánto alcanza" ya abría con una frase que resume la situación, y era la
+// diferencia entre entender de una mirada o tener que armar el diagnóstico
+// leyendo cuatro tarjetas.
+
+function pintarHeroRT(o) {
+  const box = document.getElementById("rt-hero");
+  if (!box) return;
+  if (!o.disponible) {
+    document.getElementById("rt-hero-estado").textContent = "Mes en curso";
+    document.getElementById("rt-hero-frase").textContent = "Aún no hay movimientos procesados.";
+    document.getElementById("rt-hero-accion").textContent = "";
+    return;
+  }
+  const dif = (o.gasto_mes || 0) - (o.esperado || 0);
+  const pct = o.esperado ? Math.round(dif / o.esperado * 100) : 0;
+  const bien = dif <= 0;
+  // Con pocos días el número existe pero no significa nada todavía: una sola
+  // compra grande lo da vuelta. Decirlo evita confiarse de un buen arranque.
+  const temprano = (o.dia || 0) < 7;
+  box.className = "hero" + (bien ? " ok" : "");
+  document.getElementById("rt-hero-estado").textContent =
+    esc(o.mes_label || "Mes en curso") + " · día " + o.dia + " de " + o.dias_mes;
+  document.getElementById("rt-hero-frase").innerHTML = bien
+    ? "Vas <b>" + clp(Math.abs(dif)) + "</b> bajo tu ritmo habitual."
+    : "Vas <b>" + clp(dif) + "</b> sobre tu ritmo habitual.";
+  const proy = o.dias_mes && o.dia
+    ? Math.round((o.gasto_mes || 0) / o.dia * o.dias_mes) : 0;
+  document.getElementById("rt-hero-accion").innerHTML =
+    "Llevas " + clp(o.gasto_mes) + " en " + o.n_movs + " movimientos. " +
+    (temprano
+      ? "A este ritmo cerrarías en <b>" + clp(proy) + "</b>, pero van pocos días: " +
+        "una compra grande mueve la proyección entera."
+      : "A este ritmo cerrarías en <b>" + clp(proy) + "</b>, contra un promedio de " +
+        clp(o.promedio_mes) + ".");
+}
+
+function pintarHeroOF(k) {
+  const box = document.getElementById("of-hero");
+  if (!box || !k) return;
+  const cerroBien = (k.balance_cc || 0) >= 0;
+  box.className = "hero" + (cerroBien ? " ok" : "");
+  document.getElementById("of-hero-estado").textContent =
+    "Último cierre" + (k.cuota_proximo_mes_label ? " · " + esc(k.cuota_proximo_mes_label) : "");
+  document.getElementById("of-hero-frase").innerHTML = cerroBien
+    ? "El mes cerró con <b>" + clp(k.balance_cc) + "</b> a favor."
+    : "El mes cerró con <b>" + clp(Math.abs(k.balance_cc)) + "</b> en contra.";
+  // Lo que viene pesa más que lo que pasó: la deuda en cuotas es el compromiso
+  // que va a seguir saliendo pase lo que pase.
+  document.getElementById("of-hero-accion").innerHTML =
+    "Entraron " + clp(k.ingresos_cc) + " y salieron " + clp(k.egresos_cc) +
+    ". Quedan <b>" + clp(k.total_comprometido) + "</b> en cuotas por pagar, " +
+    "y la próxima es de <b>" + clp(k.cuota_proximo_mes) + "</b>.";
+}
+
 function renderRT() {
   const o = DATA.on_time || {};
+  pintarHeroRT(o);
   if (!o.disponible) {
     document.getElementById("rt-feed").innerHTML =
       '<tr><td colspan="7" class="vacio">Aún no hay notificaciones procesadas.</td></tr>';
@@ -1769,6 +1838,7 @@ function render() { renderRT(); renderOF(); }
 // ── VISTA 2: cierre mensual ────────────────────────────────────────
 function renderOF() {
   const k = DATA.kpis, ex = DATA.oficial_extra || {movs:[], tarjetas:[]};
+  pintarHeroOF(k);
   document.getElementById("kpi-comprometido").textContent = clp(k.total_comprometido);
   document.getElementById("kpi-n-cuotas").textContent     = k.n_activas + " activas + " + k.n_nuevas + " nuevas";
   document.getElementById("kpi-cuota-prox").textContent   = clp(k.cuota_proximo_mes);
