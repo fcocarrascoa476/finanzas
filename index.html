@@ -120,6 +120,21 @@
   .b-nueva{ background:#fef3c7; color:#92400e; } .b-activa{ background:#d1fae5; color:#065f46; }
   .tag-cat { display:inline-block; padding:1px 6px; border-radius:4px; background:#e0f2fe; color:#0369a1; font-size:.67rem; }
 
+  /* Lo que hay que revisar */
+  .anom { border:1px solid var(--border); border-left:4px solid var(--amber);
+          border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+  .anom-alta { border-left-color:var(--red); }
+  .anom-cab { display:flex; justify-content:space-between; gap:10px;
+              align-items:baseline; flex-wrap:wrap; }
+  .anom-tit { font-weight:700; font-size:.9rem; }
+  .anom-conf { font-size:.68rem; font-weight:700; text-transform:uppercase;
+               letter-spacing:.4px; color:var(--muted); white-space:nowrap; }
+  .anom-det { font-size:.82rem; line-height:1.5; margin-top:5px; }
+  .anom-imp { font-size:.78rem; color:var(--muted); margin-top:5px; }
+  .anom-cfg { background:#f8fafc; border:1px solid var(--border); border-radius:6px;
+              padding:8px 10px; font-size:.74rem; margin:8px 0 0; overflow-x:auto;
+              font-family:ui-monospace,Menlo,Consolas,monospace; white-space:pre; }
+
   /* El selector va donde se ve su efecto, no al final */
   .selector-esc { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
                   margin:2px 0 4px; }
@@ -694,6 +709,14 @@
       </div>
     </div>
 
+    <div class="card-full" id="rw-card-anomalias">
+      <div class="card-title">Revisa esto: puede estar mal contado</div>
+      <p class="an-nota">Patrones que el sistema no puede resolver solo porque
+        dependen de tu vida, pero sí puede reconocer. Cada uno trae la línea
+        exacta para pegar en el archivo de configuración.</p>
+      <div id="rw-anomalias"></div>
+    </div>
+
     <div class="card-full">
       <div class="card-title">Lo que hay que tener presente</div>
       <div id="rw-notas"></div>
@@ -1123,6 +1146,28 @@ function pintarEscenarios(r) {
     "</span>";
 }
 
+// Lo que el sistema sospecha y no puede confirmar solo.
+//
+// Cinco cifras estaban mal y las cinco salieron de preguntarle al usuario en
+// una conversación. Todas eran detectables por su patrón; lo que el sistema no
+// puede saber es qué significan. Levanta la mano y deja decidir.
+function pintarAnomalias(r) {
+  const a = r.anomalias || [];
+  const card = document.getElementById("rw-card-anomalias");
+  if (!card) return;
+  if (!a.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+  document.getElementById("rw-anomalias").innerHTML = a.map(x =>
+    "<div class='anom anom-" + esc(x.confianza) + "'>" +
+    "<div class='anom-cab'><span class='anom-tit'>" + esc(x.titulo) + "</span>" +
+    "<span class='anom-conf'>" + (x.confianza === "alta" ? "muy probable"
+      : "revisar") + "</span></div>" +
+    "<div class='anom-det'>" + esc(x.detalle) + "</div>" +
+    (x.impacto ? "<div class='anom-imp'>" + esc(x.impacto) + "</div>" : "") +
+    (x.config ? "<pre class='anom-cfg'>" + esc(x.config) + "</pre>" : "") +
+    "</div>").join("");
+}
+
 // Cada cuánto conviene sacar plata del fondo.
 //
 // Es la decisión que reemplaza a "reordenar los pagos", que se analizó y no
@@ -1390,6 +1435,7 @@ function renderRW() {
   } else { notaCuo.textContent = ""; }
 
   pintarRescate(r);
+  pintarAnomalias(r);
   pintarOptimizar(r);
 
   // Cómo baja el saldo
