@@ -254,12 +254,61 @@
   <div class="tabs">
     <button class="tab on" id="tab-rt">Mes en curso</button>
     <button class="tab" id="tab-of">Cierre mensual</button>
-    <button class="tab" id="tab-an">Análisis</button>
       <button class="tab" id="tab-rw">Cuánto alcanza</button>
   </div>
 
   <!-- ===================== VISTA 1: MES EN CURSO ===================== -->
   <main id="vista-rt">
+<div class="filtros">
+      <div class="fgrupo">
+        <span class="lbl">Qué analizar</span>
+        <div class="fchips">
+          <button class="chip on" data-f="an-modo" data-v="curso">Mes en curso vs tendencia</button>
+          <button class="chip" data-f="an-modo" data-v="cerrado" id="an-chip-cerrado">Cierre del período anterior</button>
+        </div>
+      </div>
+    </div>
+    <div class="aviso" id="an-aviso">Lectura automática de tus últimos 6 meses. Compara el mes en curso contra
+      tu propio promedio, no contra un presupuesto teórico.</div>
+
+    <div class="card-full" id="an-veredicto-card">
+      <div class="an-hero">
+        <div class="an-hero-txt">
+          <div class="kpi-label" id="an-kpi-label">Ritmo del mes</div>
+          <div class="an-hero-num" id="an-veredicto">&mdash;</div>
+          <div class="an-hero-sub" id="an-veredicto-sub">&mdash;</div>
+        </div>
+        <div class="an-hero-chart"><canvas id="chAnRitmo"></canvas></div>
+      </div>
+    </div>
+
+    
+
+    <div class="card-full">
+      <div class="card-title">Dónde se está yendo la diferencia</div>
+      <p class="an-nota">Gasto del mes en curso contra tu promedio de los meses anteriores,
+        ajustado al día <span id="an-dia">—</span>. En rojo lo que va por sobre tu costumbre.</p>
+      <div id="an-desvios"></div>
+    </div>
+
+    <div class="chart-grid" id="rt-grid-patrones">
+      <div class="card">
+        <div class="card-title">Gastos hormiga</div>
+        <p class="an-nota">Compras chicas y frecuentes. Suman más de lo que parecen.</p>
+        <div id="an-hormiga"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Comercios que más te cuestan</div>
+        <p class="an-nota">Los 6 con mayor gasto acumulado en el mes.</p>
+        <div id="an-comercios"></div>
+      </div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Qué haría yo con estos números</div>
+      <div id="an-consejos"></div>
+    </div>
+
     <div class="aviso">Datos <b>provisionales</b> desde las notificaciones del banco (al día). Los montos definitivos se confirman en el estado de cuenta.</div>
 
     <div class="kpi-grid">
@@ -336,15 +385,9 @@
       </div>
     </div>
 
-    <div class="card-full">
-      <div class="card-title">Tendencia mensual por origen <span id="rt-tend-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
-      <div class="chart-wrap"><canvas id="chRtTendencia"></canvas></div>
-    </div>
+    
 
-    <div class="card-full">
-      <div class="card-title">Evolución por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· top 6 + otros</span></div>
-      <div class="chart-wrap"><canvas id="chRtCatMes"></canvas></div>
-    </div>
+    
 
     <div class="card-full" id="rt-card-comp" style="display:none">
       <div class="card-title">Este mes contra los anteriores <span id="rt-comp-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
@@ -396,6 +439,19 @@
 
   <!-- ===================== VISTA 2: CIERRE MENSUAL ===================== -->
   <main id="vista-of" style="display:none">
+<div class="card-full">
+      <div class="card-title">Tendencia por gran categoría
+        <span style="color:var(--muted);font-weight:400;text-transform:none">· 6 meses</span></div>
+      <p class="an-nota">Las ~39 categorías agrupadas en bloques, para ver el movimiento de fondo
+        sin perderse en el detalle.</p>
+      <div class="chart-wrap"><canvas id="chAnGrupos"></canvas></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Tendencia mensual por origen <span id="rt-tend-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
+      <div class="chart-wrap"><canvas id="chRtTendencia"></canvas></div>
+    </div>
+
     <div class="aviso ofi">Datos <b>oficiales</b> del banco (estado de cuenta y cartola). Se actualizan una vez al mes.</div>
 
     <div class="kpi-grid">
@@ -537,63 +593,7 @@
   </main>
 
   <!-- ===================== VISTA 3: ANÁLISIS ===================== -->
-  <main id="vista-an" style="display:none">
-    <div class="filtros">
-      <div class="fgrupo">
-        <span class="lbl">Qué analizar</span>
-        <div class="fchips">
-          <button class="chip on" data-f="an-modo" data-v="curso">Mes en curso vs tendencia</button>
-          <button class="chip" data-f="an-modo" data-v="cerrado" id="an-chip-cerrado">Cierre del período anterior</button>
-        </div>
-      </div>
-    </div>
-    <div class="aviso" id="an-aviso">Lectura automática de tus últimos 6 meses. Compara el mes en curso contra
-      tu propio promedio, no contra un presupuesto teórico.</div>
-
-    <div class="card-full" id="an-veredicto-card">
-      <div class="an-hero">
-        <div class="an-hero-txt">
-          <div class="kpi-label" id="an-kpi-label">Ritmo del mes</div>
-          <div class="an-hero-num" id="an-veredicto">&mdash;</div>
-          <div class="an-hero-sub" id="an-veredicto-sub">&mdash;</div>
-        </div>
-        <div class="an-hero-chart"><canvas id="chAnRitmo"></canvas></div>
-      </div>
-    </div>
-
-    <div class="card-full">
-      <div class="card-title">Tendencia por gran categoría
-        <span style="color:var(--muted);font-weight:400;text-transform:none">· 6 meses</span></div>
-      <p class="an-nota">Las ~39 categorías agrupadas en bloques, para ver el movimiento de fondo
-        sin perderse en el detalle.</p>
-      <div class="chart-wrap"><canvas id="chAnGrupos"></canvas></div>
-    </div>
-
-    <div class="card-full">
-      <div class="card-title">Dónde se está yendo la diferencia</div>
-      <p class="an-nota">Gasto del mes en curso contra tu promedio de los meses anteriores,
-        ajustado al día <span id="an-dia">—</span>. En rojo lo que va por sobre tu costumbre.</p>
-      <div id="an-desvios"></div>
-    </div>
-
-    <div class="chart-grid">
-      <div class="card">
-        <div class="card-title">Gastos hormiga</div>
-        <p class="an-nota">Compras chicas y frecuentes. Suman más de lo que parecen.</p>
-        <div id="an-hormiga"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">Comercios que más te cuestan</div>
-        <p class="an-nota">Los 6 con mayor gasto acumulado en el mes.</p>
-        <div id="an-comercios"></div>
-      </div>
-    </div>
-
-    <div class="card-full">
-      <div class="card-title">Qué haría yo con estos números</div>
-      <div id="an-consejos"></div>
-    </div>
-  </main>
+  
 
   <!-- ===================== VISTA 4: CUÁNTO ALCANZA ===================== -->
   <main id="vista-rw" style="display:none">
@@ -2036,7 +2036,7 @@ function renderAN() {
 
   // Chart.js entra en bucle si mide un contenedor con display:none. Los gráficos
   // se dibujan solo con la vista visible; el click de la pestaña vuelve a llamar.
-  if (document.getElementById("vista-an").style.display === "none") return;
+  if (document.getElementById("vista-rt").style.display === "none") return;
 
   // Tendencia por gran categoría: bloques fijos, mismo color en ambos modos
   const gastoTodo = (o.feed || []).filter(m => m.gasto && a.meses.includes(m.mes));
@@ -2085,6 +2085,17 @@ function renderAN() {
       (c.n === 1 ? " compra" : " compras") + "</span></span>" +
       "<b>" + clp(c.monto) + "</b></li>").join("") + "</ul>";
   };
+  // Con dos días de mes esto es ruido, no información: "los 6 comercios que más
+  // te cuestan" cuando hubo 6 compras en total son todos los comercios. El
+  // patrón de verdad está en "Cuánto alcanza", sobre seis meses; aquí solo
+  // tiene sentido cuando el mes ya lleva camino recorrido.
+  //
+  // Un primer intento midió cuántos comercios había en la lista y no filtró
+  // nada: cuatro comercios de una compra cada uno pasaban el umbral igual.
+  // Lo que importa es el volumen del mes, no el largo de la lista.
+  const gridPat = document.getElementById("rt-grid-patrones");
+  const suficiente = (o.dia || 0) >= 7 && (o.n_movs || 0) >= 15;
+  if (gridPat) gridPat.style.display = suficiente ? "" : "none";
   lista("an-hormiga", a.hormiga, "Sin compras chicas repetidas este mes. Bien ahí.");
   lista("an-comercios", a.top, "Aún no hay movimientos este mes.");
 
@@ -2153,7 +2164,7 @@ function renderAN() {
 }
 
 // ── Tabs ───────────────────────────────────────────────────────────
-const VISTAS = ["rt", "of", "an", "rw"];
+const VISTAS = ["rt", "of", "rw"];
 VISTAS.forEach(v => {
   document.getElementById("tab-" + v).onclick = () => {
     VISTAS.forEach(x => {
@@ -2161,8 +2172,8 @@ VISTAS.forEach(v => {
       document.getElementById("vista-" + x).style.display = x === v ? "block" : "none";
     });
     // Chart.js necesita re-medir al mostrarse un contenedor que estaba oculto
-    if (v === "an") renderAN();
-      if (v === "rw") renderRW();
+    if (v === "rt") renderAN();
+    if (v === "rw") renderRW();
   };
 });
 
