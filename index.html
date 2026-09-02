@@ -875,31 +875,56 @@ const etiquetaTotal = {
   afterDatasetsDraw(ch) {
     const {ctx, data} = ch;
     if (!data || !data.datasets || !data.datasets.length) return;
-    // Solo en barras: sobre una línea la etiqueta queda flotando sin anclaje.
-    if ((data.datasets[0] || {}).type !== "bar" &&
-        (ch.config.type || ch.options?.type) !== "bar") return;
-    const visibles = data.datasets.filter((_, i) => ch.isDatasetVisible(i));
+    if ((ch.config.type || ch.options?.type) !== "bar") return;
+    // Barras horizontales: la etiqueta iría dentro del gráfico y estorba
+    if (ch.options?.indexAxis === "y") return;
+
+    const visibles = data.datasets
+      .map((ds, i) => ({ds, i}))
+      .filter(x => ch.isDatasetVisible(x.i));
     if (!visibles.length) return;
-    const apilado = ch.options?.scales?.x?.stacked;
+
+    const apilado = !!ch.options?.scales?.x?.stacked;
     ctx.save();
     ctx.font = "600 10px system-ui, -apple-system, sans-serif";
     ctx.fillStyle = "#475569";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
+
+    const fmt = v => Math.abs(v) >= 1e6 ? "$" + (v / 1e6).toFixed(1) + "M"
+                   : Math.abs(v) >= 1e3 ? "$" + Math.round(v / 1e3) + "K"
+                   : "$" + Math.round(v);
+
     data.labels.forEach((_, i) => {
-      let total = 0, arriba = Infinity;
-      data.datasets.forEach((ds, di) => {
-        if (!ch.isDatasetVisible(di)) return;
-        const v = +ds.data[i] || 0;
-        total += v;
-        const el = ch.getDatasetMeta(di).data[i];
-        if (el && el.y < arriba) arriba = el.y;
-      });
-      if (!total || !isFinite(arriba)) return;
-      const t = Math.abs(total) >= 1e6 ? "$" + (total / 1e6).toFixed(1) + "M"
-              : Math.abs(total) >= 1e3 ? "$" + Math.round(total / 1e3) + "K"
-              : "$" + Math.round(total);
-      ctx.fillText(t, ch.getDatasetMeta(0).data[i]?.x ?? 0, arriba - 4);
+      if (apilado) {
+        // Una sola etiqueta con el total, centrada sobre la pila
+        let total = 0, arriba = Infinity, x = null;
+        visibles.forEach(({ds, i: di}) => {
+          total += +ds.data[i] || 0;
+          const el = ch.getDatasetMeta(di).data[i];
+          if (el) { if (el.y < arriba) arriba = el.y; if (x === null) x = el.x; }
+        });
+        if (total && isFinite(arriba) && x !== null) ctx.fillText(fmt(total), x, arriba - 4);
+      } else {
+        // Agrupadas: cada barra lleva su propio valor.
+        //
+        // Sumarlas no significa nada -en "Ingresos vs Egresos" el total sería
+        // la suma de dos magnitudes opuestas- y ponerla en la x del primer
+        // dataset la dejaba flotando entre las dos barras, descuadrada.
+        //
+        // Si la barra es más angosta que su etiqueta, no se dibuja: en el
+        // teléfono, ocho meses por dos series daban dieciséis números
+        // encimados que no se podían leer.
+        visibles.forEach(({ds, i: di}) => {
+          const v = +ds.data[i] || 0;
+          const el = ch.getDatasetMeta(di).data[i];
+          if (!v || !el) return;
+          const ancho = el.width || (ch.chartArea.width / (data.labels.length * visibles.length));
+          const t = fmt(v);
+          if (ctx.measureText(t).width > ancho + 4) return;
+          ctx.fillText(t, el.x, el.y - 4);
+        });
+      }
     });
     ctx.restore();
   },
@@ -1996,15 +2021,9 @@ function renderOF() {
   // salia 3,3M aqui y 2,9M en el desglose por categoria. Dos cifras del mismo
   // mes en la misma pantalla. La de la cartola es mas completa y sigue siendo
   // la del runway, donde se explica; aqui manda la coherencia interna.
-  const gm = {};
-  ((DATA.on_time || {}).feed || []).forEach(m => {
-    if (m.gasto) gm[m.mes] = (gm[m.mes] || 0) + m.monto;
-  });
-  const _serv = DATA.servicios || {};
-  (_serv.meses || []).forEach((mm, i) => {
-    const t = (_serv.series || []).reduce((a, x) => a + (x.values[i] || 0), 0);
-    if (t) gm[mm] = (gm[mm] || 0) + t;
-  });
+  // La misma base que el titular: la calcula el backend una sola vez para que
+  // no haya dos formas de sumar el mismo mes.
+  const gm = DATA.gasto_desglosable || {};
   const enCurso = mesEnCurso();
   // Esta es la vista de meses CERRADOS: el mes en curso no entra.
   const mesesTot = Object.keys(gm).sort().filter(x => x < enCurso).slice(-6);
@@ -2261,10 +2280,21 @@ function analizar(modo) {
        neto: cc.abonos[iCC] - cc.cargos[iCC]}
     : null;
 
+  // La serie del sparkline, con TODOS los meses cortados al mismo día.
+  //
+  // Mostraba los anteriores completos junto al mes en curso con dos días: la
+  // barra de septiembre se veía diminuta y no porque se gaste menos, sino
+  // porque se comparaba un mes entero contra dos días. Esta vista responde
+  // "cómo voy", y para eso los períodos van cortados a la misma altura.
+  const corteDia = modo === "cerrado" ? 31 : (o.dia || 31);
+  const hastaDia = m => {
+    const d = parseInt(String(m.fecha || "").slice(0, 2), 10);
+    return !d || d <= corteDia;
+  };
   return {modo, objetivo, meses, previos, real, esperadoHoy, promedioMes: totalPrev,
           proyectado: prop > 0 ? real / prop : 0, desvios, hormiga, top, flujo,
-          nMovs: delMes.length,
-          serie: meses.map(mm => gasto.filter(m => m.mes === mm)
+          nMovs: delMes.length, corteDia,
+          serie: meses.map(mm => gasto.filter(m => m.mes === mm && hastaDia(m))
                                       .reduce((s,m) => s + m.monto, 0))};
 }
 
