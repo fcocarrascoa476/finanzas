@@ -791,7 +791,14 @@ function chart(id, cfg) {
   if (charts[id]) charts[id].destroy();
   charts[id] = new Chart(document.getElementById(id), cfg);
 }
-const ejeY = { ticks:{ callback:v => "$"+(v/1e6>=1?(v/1e6).toFixed(1)+"M":v/1e3>=1?(v/1e3).toFixed(0)+"K":v) } };
+// La escala se decide por el valor ABSOLUTO. Comparando el valor con signo,
+// cualquier número negativo fallaba las dos condiciones y caía al crudo: el
+// eje del gráfico de saldos mostraba "$-5000000" entre "$0" y "$5.0M".
+const ejeY = { ticks:{ callback:v => {
+  const a = Math.abs(v), s = v < 0 ? "-$" : "$";
+  return a >= 1e6 ? s+(a/1e6).toFixed(1)+"M"
+       : a >= 1e3 ? s+(a/1e3).toFixed(0)+"K" : s+a;
+} } };
 
 // ── Descifrado (mismo contrato que cripto.py) ──────────────────────
 async function descifrar(b64, frase) {
