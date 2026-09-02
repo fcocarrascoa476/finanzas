@@ -271,24 +271,15 @@
       <div class="hero-accion" id="rt-hero-accion"></div>
     </div>
 
-<div class="filtros">
-      <div class="fgrupo">
-        <span class="lbl">Qué analizar</span>
-        <div class="fchips">
-          <button class="chip on" data-f="an-modo" data-v="curso">Mes en curso vs tendencia</button>
-          <button class="chip" data-f="an-modo" data-v="cerrado" id="an-chip-cerrado">Cierre del período anterior</button>
-        </div>
-      </div>
-    </div>
-    <div class="aviso" id="an-aviso">Lectura automática de tus últimos 6 meses. Compara el mes en curso contra
-      tu propio promedio, no contra un presupuesto teórico.</div>
+
+    <div class="aviso" id="an-aviso" style="display:none"></div>
 
     <div class="card-full" id="an-veredicto-card">
       <div class="an-hero">
         <div class="an-hero-txt">
-          <div class="kpi-label" id="an-kpi-label">Ritmo del mes</div>
-          <div class="an-hero-num" id="an-veredicto">&mdash;</div>
-          <div class="an-hero-sub" id="an-veredicto-sub">&mdash;</div>
+          <div class="kpi-label" id="an-kpi-label">Tu gasto mes a mes</div>
+          <div class="an-hero-sub" id="an-veredicto-sub" style="display:none"></div>
+          <div id="an-veredicto" style="display:none"></div>
         </div>
         <div class="an-hero-chart"><canvas id="chAnRitmo"></canvas></div>
       </div>
@@ -465,10 +456,7 @@
       <div class="chart-wrap"><canvas id="chAnGrupos"></canvas></div>
     </div>
 
-    <div class="card-full">
-      <div class="card-title">Tendencia mensual por origen <span id="rt-tend-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
-      <div class="chart-wrap"><canvas id="chRtTendencia"></canvas></div>
-    </div>
+    
 
     <div class="aviso ofi">Datos <b>oficiales</b> del banco (estado de cuenta y cartola). Se actualizan una vez al mes.</div>
 
@@ -1035,8 +1023,13 @@ function pintarHeroRT(o) {
     document.getElementById("rt-hero-accion").textContent = "";
     return;
   }
-  const dif = (o.gasto_mes || 0) - (o.esperado || 0);
-  const pct = o.esperado ? Math.round(dif / o.esperado * 100) : 0;
+  // La misma cuenta que hace analizar() para el bloque de abajo. Antes cada
+  // uno la hacía por su lado y daban $189.368 y $162.801 para lo mismo: dos
+  // cifras del mismo dato en la misma pantalla es peor que no mostrar ninguna.
+  const an = (typeof analizar === "function") ? analizar("curso") : null;
+  const dif = an ? (an.real - an.esperadoHoy) : ((o.gasto_mes || 0) - (o.esperado || 0));
+  const base = an ? an.esperadoHoy : (o.esperado || 0);
+  const pct = base ? Math.round(dif / base * 100) : 0;
   const bien = dif <= 0;
   // Con pocos días el número existe pero no significa nada todavía: una sola
   // compra grande lo da vuelta. Decirlo evita confiarse de un buen arranque.
@@ -1077,8 +1070,10 @@ function pintarHeroOF(k) {
   if (!box || !k) return;
   const cerroBien = (k.balance_cc || 0) >= 0;
   box.className = "hero" + (cerroBien ? " ok" : "");
+  // El mes que se muestra es el CERRADO, no el de la próxima cuota de tarjeta.
+  // Usar cuota_proximo_mes_label ponía "Agosto" sobre cifras de septiembre.
   document.getElementById("of-hero-estado").textContent =
-    "Último cierre" + (k.cuota_proximo_mes_label ? " · " + esc(k.cuota_proximo_mes_label) : "");
+    "Último cierre" + (k.mes_cerrado_label ? " · " + esc(k.mes_cerrado_label) : "");
   document.getElementById("of-hero-frase").innerHTML = cerroBien
     ? "El mes cerró con <b>" + clp(k.balance_cc) + "</b> a favor."
     : "El mes cerró con <b>" + clp(Math.abs(k.balance_cc)) + "</b> en contra.";
@@ -1180,15 +1175,11 @@ function renderRT() {
       scales:{ x:ejeY, y:{ ticks:{font:{size:10}} } } }
   });
 
-  // Evolutivos: siempre los 6 meses (respetan los otros filtros, no el de mes)
-  const etiquetas = meses.map(mesLabel);
-  document.getElementById("rt-tend-nota").textContent =
-    meses[meses.length-1] === o.mes_actual ? "· el último mes va en curso" : "";
-  chartApilado("chRtTendencia", etiquetas,
-    apilarPorMes(hist, meses, m => m.medio || "Otro", ["Credito","Debito","Transferencia"], COL_MEDIO)
-      .map(d => Object.assign(d, {label: NOM_MEDIO[d.label] || d.label})));
-  chartApilado("chRtCatMes", etiquetas,
-    apilarPorMes(hist, meses, catDe, TOP_CATS));
+  // Los dos evolutivos de seis meses que vivian aqui se quitaron: eran
+  // historia dentro de la pestaña del mes en curso, y ya estan en "Cierre
+  // mensual" -uno tal cual, el otro cubierto por "Contado vs Cuotas"-.
+  // Sus referencias quedaban apuntando a elementos inexistentes y hacian
+  // reventar renderRT() entero, dejando en blanco los graficos que si estan.
 
   pintarUSD(movs, esActual, o);
   pintarComparativo(o);
@@ -2115,16 +2106,21 @@ function renderAN() {
   const a = analizar(modo);
   const cont = document.getElementById("an-desvios");
   const o = DATA.on_time || {};
-  // Rotula el chip con el mes real que se va a analizar
+  // El selector "Qué analizar" ya no existe: esta pestaña es del mes en curso y
+  // el análisis del mes cerrado vive en "Cierre mensual". Se consulta el
+  // elemento con cuidado porque puede no estar, y sin esta guarda renderAN
+  // reventaba antes de dibujar el gráfico y la tarjeta quedaba en blanco.
   const cerrado = ((o.meses || []).map(m => m.v).sort().filter(m => m < o.mes_actual).pop());
-  if (cerrado)
-    document.getElementById("an-chip-cerrado").textContent = "Cierre de " + mesLabel(cerrado);
+  const chipCerrado = document.getElementById("an-chip-cerrado");
+  if (cerrado && chipCerrado)
+    chipCerrado.textContent = "Cierre de " + mesLabel(cerrado);
   if (!a) {
     cont.innerHTML = '<p class="vacio">Se necesita al menos un mes anterior completo para comparar.</p>';
     return;
   }
   const esCerrado = modo === "cerrado";
-  document.getElementById("an-aviso").innerHTML = esCerrado
+  const avisoBox = document.getElementById("an-aviso");
+  if (avisoBox) avisoBox.innerHTML = esCerrado
     ? "Mes <b>" + mesLabel(a.objetivo) + " ya cerrado</b>, completo, contra el promedio de los " +
       a.previos.length + " meses anteriores."
     : "Mes en curso contra tu propio promedio, prorrateado al día que llevamos. " +
@@ -2167,7 +2163,14 @@ function renderAN() {
 
   // Chart.js entra en bucle si mide un contenedor con display:none. Los gráficos
   // se dibujan solo con la vista visible; el click de la pestaña vuelve a llamar.
-  if (document.getElementById("vista-rt").style.display === "none") return;
+  //
+  // Se miran las DOS vistas porque los gráficos de esta función quedaron
+  // repartidos: el ritmo del mes vive en "Mes en curso" y las dos tendencias de
+  // seis meses se mudaron a "Cierre mensual". Preguntando solo por una, las
+  // tendencias quedaban en blanco al abrir la otra pestaña.
+  const visible = ["vista-rt", "vista-of"].some(
+    id => (document.getElementById(id) || {}).style?.display !== "none");
+  if (!visible) return;
 
   // Tendencia por gran categoría: bloques fijos, mismo color en ambos modos
   const gastoTodo = (o.feed || []).filter(m => m.gasto && a.meses.includes(m.mes));
@@ -2302,8 +2305,29 @@ VISTAS.forEach(v => {
       document.getElementById("tab-" + x).classList.toggle("on", x === v);
       document.getElementById("vista-" + x).style.display = x === v ? "block" : "none";
     });
-    // Chart.js necesita re-medir al mostrarse un contenedor que estaba oculto
-    if (v === "rt") renderAN();
+    // Chart.js necesita re-medir al mostrarse un contenedor que estaba oculto:
+    // un canvas dibujado dentro de un display:none queda con altura cero y al
+    // mostrar la pestaña se ve una tarjeta vacía. Pasa con TODAS las vistas, no
+    // solo con las que se vuelven a renderizar.
+    // Cada vista se vuelve a dibujar al mostrarse. Un canvas creado dentro de
+    // un display:none queda de 0x0 y no hay resize que lo recupere: Chart.js
+    // fija ese tamaño en el estilo inline y ni resize(), ni pasarle medidas
+    // explícitas, ni update() lo devuelven. Lo único que funciona es rehacer
+    // el gráfico con el contenedor ya visible.
+    // "of" necesita las dos: renderOF dibuja sus propios graficos, y renderAN
+    // dibuja las dos tendencias de 6 meses que se mudaron a esa pestaña por ser
+    // historicas. Sin la segunda llamada quedaban en blanco justo ahi.
+    // Cada vista se redibuja entera al mostrarse. Un canvas creado dentro de un
+    // display:none queda de 0x0 y no hay forma de recuperarlo: Chart.js fija ese
+    // tamano en el estilo inline y ni resize(), ni pasarle medidas explicitas,
+    // ni update() lo devuelven. Lo unico que funciona es rehacer el grafico con
+    // el contenedor ya visible.
+    //
+    // "of" llama a las dos porque sus graficos quedaron repartidos entre dos
+    // funciones: renderOF dibuja los suyos y renderAN la tendencia de 6 meses
+    // que se mudo a esa pestaña por ser historica.
+    if (v === "rt") { renderRT(); renderAN(); }
+    if (v === "of") { renderOF(); renderAN(); }
     if (v === "rw") renderRW();
   };
 });
