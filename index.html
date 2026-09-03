@@ -588,7 +588,9 @@
     </div>
 
     <div class="card-full">
-      <div class="card-title">Detalle de cuotas pendientes</div>
+      <div class="card-title">Detalle de cuotas pendientes
+        <span style="color:var(--muted);font-weight:400;text-transform:none">· lo que queda por facturar</span></div>
+      <p class="an-nota" id="of-cuotas-facturadas"></p>
       <div style="overflow-x:auto">
         <table>
           <thead><tr>
@@ -2315,6 +2317,18 @@ function renderOF() {
       "<td>" + esc(m.cuota || "—") + "</td>" +
       "<td class='num' style='font-weight:600'>" + clp(m.monto) + "</td>"
   });
+
+  // Las ya facturadas se cuentan, no se esconden: si desaparecen sin decirlo,
+  // la tabla parece haber perdido filas.
+  const nf = document.getElementById("of-cuotas-facturadas");
+  if (nf) {
+    const yaf = DATA.cuotas_facturadas || 0;
+    nf.textContent = yaf
+      ? "Solo lo que queda por facturar. " + yaf + (yaf === 1
+          ? " compra ya terminó de pagarse y salió de la lista."
+          : " compras ya terminaron de pagarse y salieron de la lista.")
+      : "Solo lo que queda por facturar.";
+  }
 
   const tb = document.getElementById("tablaCuotasBody");
   tb.innerHTML = "";
