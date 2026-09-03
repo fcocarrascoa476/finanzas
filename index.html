@@ -132,6 +132,9 @@
                  padding-top:10px; border-top:1px solid rgba(255,255,255,.22); }
   .hero-accion b { color:#fbbf24; }
   .hero.ok .hero-frase b, .hero.ok .hero-accion b { color:#6ee7b7; }
+  /* La precisión sobre pagos atrasados: matiza el titular sin competir con él */
+  .hero-nota { font-size:.82rem; line-height:1.45; margin-top:9px; padding-top:9px;
+               border-top:1px dashed rgba(255,255,255,.22); opacity:.92; }
   @media (max-width:520px){ .hero-frase { font-size:1.25rem; } }
 
   /* El runway manda: los otros tres KPI son contexto */
@@ -1160,10 +1163,31 @@ function pintarHeroOF(k) {
     ? flecha(d.monto) + " <b>" + clp(Math.abs(d.monto)) + "</b> (" +
       (d.pct > 0 ? "+" : "") + d.pct + "%) " + etq + " " + ref
     : "";
+  // Ponerse al día no es gastar más.
+  //
+  // Agosto cerró 33% sobre julio y dentro iban 297.546 de tres mensualidades
+  // del colegio que no se pagaron en mayo, junio ni julio. La cifra del mes NO
+  // se corrige -esa plata salió de la cuenta en agosto y es lo que el runway
+  // tiene que financiar-, pero sin esta línea el mes se lee como un descontrol
+  // que no ocurrió.
+  //
+  // La comparación limpia le devuelve su cuota al mes anterior: descontarle el
+  // atraso solo a agosto lo mediría contra un julio al que le falta la suya.
+  let extra = "";
+  if (c.atrasado) {
+    const sa = c.solo_mes_vs_anterior;
+    extra = "<div class='hero-nota'>De ese total, <b>" + clp(c.atrasado) +
+      "</b> (" + c.pct_atrasado + "%) son cuotas atrasadas de meses anteriores. " +
+      "Solo lo del mes: <b>" + clp(c.solo_mes) + "</b>" +
+      (sa ? " — " + flecha(sa.monto) + " " + clp(Math.abs(sa.monto)) + " (" +
+            (sa.pct > 0 ? "+" : "") + sa.pct + "%) contra un mes anterior " +
+            "completo de " + clp(c.anterior_ajustado) : "") + ".</div>";
+  }
   document.getElementById("of-hero-accion").innerHTML =
     linea(vp, "que tu promedio de " + c.meses_promedio + " meses:", clp(c.promedio)) +
     "<br>" +
-    linea(va, "que el mes anterior:", clp(c.gasto_anterior || 0));
+    linea(va, "que el mes anterior:", clp(c.gasto_anterior || 0)) +
+    extra;
 }
 
 function renderRT() {
