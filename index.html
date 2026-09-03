@@ -501,7 +501,9 @@
     </div>
 
     <div class="card-full">
-      <div class="card-title">Evolución mensual cuenta corriente</div>
+      <div class="card-title">Evolución mensual cuenta corriente
+        <span style="color:var(--muted);font-weight:400;text-transform:none">· entradas, salidas y saldo al cierre</span></div>
+      <p class="an-nota" id="of-saldo-nota"></p>
       <div class="chart-wrap"><canvas id="chartCC"></canvas></div>
     </div>
 
@@ -551,12 +553,6 @@
         <thead><tr><th>Empresa</th><th>Categoría</th><th class="num">Monto</th></tr></thead>
         <tbody id="of-serv-tabla"></tbody>
       </table>
-    </div>
-
-    <div class="card-full">
-      <div class="card-title">Saldo de la cuenta corriente al cierre de cada mes</div>
-      <p class="an-nota" id="of-saldo-nota"></p>
-      <div class="chart-wrap"><canvas id="chartSaldo"></canvas></div>
     </div>
 
     <div class="card-full">
@@ -879,9 +875,12 @@ const etiquetaTotal = {
     // Barras horizontales: la etiqueta iría dentro del gráfico y estorba
     if (ch.options?.indexAxis === "y") return;
 
+    // Solo las barras. Un grafico mixto -barras de flujo con la linea del
+    // saldo encima- traia el dataset de la linea hasta aqui y le escribia el
+    // valor sobre cada punto, tapando el trazado con numeros de otra escala.
     const visibles = data.datasets
       .map((ds, i) => ({ds, i}))
-      .filter(x => ch.isDatasetVisible(x.i));
+      .filter(x => ch.isDatasetVisible(x.i) && (x.ds.type || "bar") === "bar");
     if (!visibles.length) return;
 
     const apilado = !!ch.options?.scales?.x?.stacked;
@@ -2110,48 +2109,77 @@ function renderOF() {
     apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses,
                  m => m.cat || "Otros", TOP_CATS_OF));
 
-  // Saldo al cierre de cada mes. El punto es el último movimiento cargado de
-  // ese mes: si la cartola no llega a fin de mes, el tooltip lo dice.
+  // Flujo y saldo en un solo gráfico.
+  //
+  // Estaban separados y la pregunta que uno se hace es una sola: entró más de
+  // lo que salió, ¿y con qué quedé? Con las barras arriba y la línea diez
+  // tarjetas más abajo había que recordar una para leer la otra. Abril lo
+  // muestra: entran 48,5M y el saldo salta a 44M; mayo salen 42,6M y vuelve a
+  // 7M. Es el mismo hecho contado dos veces.
+  //
+  // Dos escalas distintas comparten el dibujo, así que cada eje va del color
+  // de su serie: el saldo a la derecha en azul, el flujo a la izquierda.
   //
   // Todo lo de esta pestaña excluye el mes en curso: un mes de dos días junto
   // a meses completos se lee como una caída y no lo es.
-  const sal = _sinMesEnCurso(DATA.cc_saldos || {labels:[], saldos:[], fechas:[]});
-  if (sal.labels.length) {
-    const ult = sal.fechas[sal.fechas.length-1];
-    document.getElementById("of-saldo-nota").textContent =
-      "Saldo que declara el banco al último movimiento de cada mes. Último dato: " + ult + ".";
-    chart("chartSaldo", {
-      type:"line",
-      data:{ labels:sal.labels, datasets:[{
-        label:"Saldo", data:sal.saldos,
-        borderColor:"#2a78d6", backgroundColor:"rgba(42,120,214,.10)",
-        borderWidth:2, fill:true, tension:.25,
-        pointRadius:5, pointHoverRadius:8,
-        pointBackgroundColor:sal.saldos.map(v => v < 0 ? "#e34948" : "#2a78d6"),
-        pointBorderColor:"#fff", pointBorderWidth:2 }] },
-      options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false},
-          tooltip:{ callbacks:{
-            title:it => sal.labels[it[0].dataIndex] + " · al " + sal.fechas[it[0].dataIndex],
-            label:c => " Saldo: " + clp(c.raw),
-            afterLabel:c => { const i = c.dataIndex; if (!i) return "";
-              const d = sal.saldos[i] - sal.saldos[i-1];
-              return (d >= 0 ? "▲ +" : "▼ −") + clp(Math.abs(d)).slice(1) + " vs mes anterior"; } } } },
-        scales:{ x:{ grid:{display:false} }, y:ejeY } }
-    });
-  }
-
-  // Sin el mes en curso, como el resto de esta pestaña
   const ccm = _sinMesEnCurso(DATA.cc_mensual);
+  const sal = _sinMesEnCurso(DATA.cc_saldos || {labels:[], saldos:[], fechas:[]});
+  // Alineado por label y no por posición: si un mes tiene movimientos pero la
+  // cartola de ese mes no llegó, las dos series tienen largos distintos y
+  // emparejarlas por índice correría el saldo un mes.
+  const saldoDe = {}, fechaDe = {};
+  sal.labels.forEach((l, i) => { saldoDe[l] = sal.saldos[i]; fechaDe[l] = sal.fechas[i]; });
+
   if (ccm.labels.length) {
+    const serieSaldo = ccm.labels.map(l => l in saldoDe ? saldoDe[l] : null);
+    const haySaldo = serieSaldo.some(v => v !== null);
+    const nota = document.getElementById("of-saldo-nota");
+    if (nota) nota.textContent = haySaldo
+      ? "Las barras son lo que entró y salió en el mes; la línea, el saldo que declara el " +
+        "banco al último movimiento cargado. Último dato: " + sal.fechas[sal.fechas.length-1] + "."
+      : "Lo que entró y salió de la cuenta cada mes.";
+
+    const ds = [
+      { label:"Ingresos", data:ccm.abonos, backgroundColor:"rgba(16,185,129,.75)",
+        borderRadius:4, order:2 },
+      { label:"Egresos",  data:ccm.cargos, backgroundColor:"rgba(239,68,68,.72)",
+        borderRadius:4, order:2 }];
+    if (haySaldo) ds.push({
+      type:"line", label:"Saldo al cierre", data:serieSaldo, yAxisID:"y1",
+      borderColor:"#2a78d6", backgroundColor:"rgba(42,120,214,.10)",
+      borderWidth:2, fill:true, tension:.25, spanGaps:true,
+      pointRadius:4, pointHoverRadius:8,
+      pointBackgroundColor:serieSaldo.map(v => v < 0 ? "#e34948" : "#2a78d6"),
+      pointBorderColor:"#fff", pointBorderWidth:2, order:1 });
+
     chart("chartCC", {
       type:"bar",
-      data:{ labels:ccm.labels, datasets:[
-        { label:"Ingresos", data:ccm.abonos, backgroundColor:"rgba(16,185,129,.75)", borderRadius:4 },
-        { label:"Egresos",  data:ccm.cargos, backgroundColor:"rgba(239,68,68,.72)", borderRadius:4 }] },
+      data:{ labels:ccm.labels, datasets:ds },
       options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{position:"top"}, tooltip:{ callbacks:{ label:c => " " + c.dataset.label + ": " + clp(c.raw) } } },
-        scales:{ x:{grid:{display:false}}, y:ejeY } }
+        interaction:{ mode:"index", intersect:false },
+        plugins:{ legend:{position:"top"},
+          tooltip:{ callbacks:{
+            title:it => { const l = it[0].label;
+              return l + (fechaDe[l] ? " · saldo al " + fechaDe[l] : ""); },
+            label:c => " " + c.dataset.label + ": " + clp(c.raw),
+            afterLabel:c => {
+              if (c.dataset.yAxisID !== "y1") return "";
+              const i = ccm.labels.indexOf(c.label) - 1;
+              const prev = i >= 0 ? serieSaldo[i] : null;
+              if (prev === null || prev === undefined) return "";
+              const d = c.raw - prev;
+              return (d >= 0 ? "   ▲ +" : "   ▼ −") + clp(Math.abs(d)).slice(1) +
+                     " vs mes anterior"; } } } },
+        scales:{
+          x:{ grid:{display:false} },
+          y:{ ...ejeY, position:"left",
+              title:{ display:true, text:"Flujo del mes", color:"#64748b",
+                      font:{size:10} } },
+          y1:{ ...ejeY, position:"right", display:haySaldo,
+               grid:{ drawOnChartArea:false },
+               ticks:{ ...ejeY.ticks, color:"#2a78d6" },
+               title:{ display:true, text:"Saldo al cierre", color:"#2a78d6",
+                       font:{size:10} } } } }
     });
   }
 
