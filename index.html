@@ -2003,6 +2003,29 @@ function _sinMesEnCurso(serie) {
   return out;
 }
 
+// Los ultimos N meses CERRADOS, sobre la misma base que el titular.
+//
+// Es LA ventana de la pestaña de cierre, y existe para que no la elija cada
+// grafico por su cuenta. "Cuanto gastaste cada mes" la sacaba de
+// gasto_desglosable y mostraba seis -marzo a agosto-, mientras "Tendencia por
+// gran categoria" partia de la ventana de analisis, que incluye el mes en
+// curso, y al quitarlo se quedaba en cinco: dos tarjetas pegadas, distinto
+// numero de barras, y la de abajo rotulada "6 meses" con cinco.
+function mesesDeCierre(n) {
+  const gm = DATA.gasto_desglosable || {};
+  const enCurso = mesEnCurso();
+  return Object.keys(gm).sort().filter(x => x < enCurso).slice(-n);
+}
+
+// Recorta una serie a sus ultimos N puntos. Los campos que no son listas
+// -"ultimo_mes" y compania- pasan intactos.
+function _ultimos(serie, n) {
+  if (!serie || !serie.labels || serie.labels.length <= n) return serie;
+  const out = {};
+  for (const k in serie) out[k] = Array.isArray(serie[k]) ? serie[k].slice(-n) : serie[k];
+  return out;
+}
+
 function renderOF() {
   const k = DATA.kpis, ex = DATA.oficial_extra || {movs:[], tarjetas:[]};
   pintarHeroOF(k);
@@ -2025,7 +2048,7 @@ function renderOF() {
   const gm = DATA.gasto_desglosable || {};
   const enCurso = mesEnCurso();
   // Esta es la vista de meses CERRADOS: el mes en curso no entra.
-  const mesesTot = Object.keys(gm).sort().filter(x => x < enCurso).slice(-6);
+  const mesesTot = mesesDeCierre(6);
   const cerrados = mesesTot;
   const prom = cerrados.length
     ? cerrados.reduce((a, x) => a + gm[x], 0) / cerrados.length : 0;
@@ -2122,8 +2145,15 @@ function renderOF() {
   //
   // Todo lo de esta pestaña excluye el mes en curso: un mes de dos días junto
   // a meses completos se lee como una caída y no lo es.
-  const ccm = _sinMesEnCurso(DATA.cc_mensual);
-  const sal = _sinMesEnCurso(DATA.cc_saldos || {labels:[], saldos:[], fechas:[]});
+  //
+  // Recortado a los mismos seis meses que el resto de la pestaña. Mostraba
+  // ocho -desde enero- y era la unica tarjeta con otra ventana: puestas una
+  // sobre otra, dos series de distinto largo se comparan mal. Marzo a agosto
+  // sigue conteniendo abril y mayo, que son los meses que explican la curva
+  // del saldo, asi que no se pierde nada.
+  const ccm = _ultimos(_sinMesEnCurso(DATA.cc_mensual), 6);
+  const sal = _ultimos(
+    _sinMesEnCurso(DATA.cc_saldos || {labels:[], saldos:[], fechas:[]}), 6);
   // Alineado por label y no por posición: si un mes tiene movimientos pero la
   // cartola de ese mes no llegó, las dos series tienen largos distintos y
   // emparejarlas por índice correría el saldo un mes.
@@ -2435,9 +2465,12 @@ function renderAN() {
 
   // Tendencia por gran categoría: bloques fijos, mismo color en ambos modos.
   //
-  // Sin el mes en curso: vive en la pestaña de meses CERRADOS, y una barra de
-  // dos días junto a seis meses completos se lee como un desplome del gasto.
-  const mesesCerrados = a.meses.filter(m => m < mesEnCurso());
+  // La ventana es la misma que la del gráfico de totales, y sale de la misma
+  // función. Antes se filtraba el mes en curso de `a.meses`, que son seis
+  // CONTANDO el actual: quedaban cinco barras, abril a agosto, justo debajo de
+  // un gráfico que mostraba seis desde marzo. Dos ventanas distintas en la
+  // misma pestaña es exactamente lo que hace imposible cuadrar las cifras.
+  const mesesCerrados = mesesDeCierre(6);
   // Con las cuentas de Sencillito, igual que los otros gráficos de la pestaña:
   // sin ellas las barras sumaban 2.743.392 donde el total decía 3.495.239.
   const servG = DATA.servicios || {};
