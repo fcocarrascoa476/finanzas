@@ -2139,45 +2139,81 @@ function renderOF() {
         "banco al último movimiento cargado. Último dato: " + sal.fechas[sal.fechas.length-1] + "."
       : "Lo que entró y salió de la cuenta cada mes.";
 
+    // ¿Un eje o dos? Lo decide el DATO, no el espacio.
+    //
+    // Un primer intento comparaba los máximos que Chart.js calculaba para cada
+    // eje y apagaba el derecho si coincidían. En el escritorio coincidían y en
+    // el teléfono no -con menos alto elige otra cantidad de marcas-, así que
+    // la misma pantalla salía con uno o con dos ejes según el tamaño.
+    //
+    // El criterio estable es la proporción entre los máximos: si el saldo se
+    // mueve en el mismo orden que el flujo -hoy sí: 43,8M contra 48,5M- una
+    // escala común es fiel y la línea se compara de frente con las barras. Si
+    // el saldo es mucho menor -lo normal fuera de abril: 2M contra 8M- una
+    // escala común lo aplasta contra el suelo y ahí el segundo eje se gana su
+    // lugar.
+    const maxFlujo = Math.max(0, ...ccm.abonos, ...ccm.cargos);
+    const vistos = serieSaldo.filter(v => v !== null && v !== undefined);
+    const maxSaldo = vistos.length ? Math.max(...vistos.map(Math.abs)) : 0;
+    const dosEjes = haySaldo && maxFlujo > 0 && maxSaldo < maxFlujo * 0.5;
+    // En el teléfono cada eje se come 74 de 375 píxeles: dos dejaban las
+    // barras en 8 px de ancho. Se queda el título -avisa que la línea va en
+    // otra escala- y el número exacto lo da el tooltip al tocar.
+    //
+    // El respaldo de 1024 no es decorativo: midiendo justo después de un
+    // cambio de tamaño la ventana llegó a reportar 0 de ancho, y sin él una
+    // pantalla grande se habría quedado sin los números del eje derecho.
+    const ancho = document.documentElement.clientWidth || window.innerWidth || 1024;
+    const numerosDer = dosEjes && ancho >= 560;
+
+    // La línea va SIN relleno y por encima: como área tapaba las barras de los
+    // meses altos -abril quedaba escondido bajo el azul- y ese mes es
+    // justamente el que explica la curva.
     const ds = [
       { label:"Ingresos", data:ccm.abonos, backgroundColor:"rgba(16,185,129,.75)",
         borderRadius:4, order:2 },
       { label:"Egresos",  data:ccm.cargos, backgroundColor:"rgba(239,68,68,.72)",
         borderRadius:4, order:2 }];
     if (haySaldo) ds.push({
-      type:"line", label:"Saldo al cierre", data:serieSaldo, yAxisID:"y1",
-      borderColor:"#2a78d6", backgroundColor:"rgba(42,120,214,.10)",
-      borderWidth:2, fill:true, tension:.25, spanGaps:true,
-      pointRadius:4, pointHoverRadius:8,
+      type:"line", label:"Saldo al cierre", data:serieSaldo,
+      yAxisID: dosEjes ? "y1" : "y",
+      // El backgroundColor no pinta area -fill va en false-, solo el cuadrito
+      // de la leyenda: sin el salia una caja gris con borde azul entre dos
+      // cajas solidas.
+      borderColor:"#2a78d6", backgroundColor:"#2a78d6",
+      borderWidth:2.5, fill:false, tension:.25,
+      spanGaps:true, pointRadius:4, pointHoverRadius:8,
       pointBackgroundColor:serieSaldo.map(v => v < 0 ? "#e34948" : "#2a78d6"),
-      pointBorderColor:"#fff", pointBorderWidth:2, order:1 });
+      pointBorderColor:"#fff", pointBorderWidth:2, order:0 });
 
     chart("chartCC", {
       type:"bar",
       data:{ labels:ccm.labels, datasets:ds },
       options:{ responsive:true, maintainAspectRatio:false,
         interaction:{ mode:"index", intersect:false },
-        plugins:{ legend:{position:"top"},
+        // La leyenda sigue el orden de los datasets y no el de dibujo: la
+        // línea se dibuja encima (order 0) y por eso encabezaba la lista.
+        plugins:{ legend:{position:"top",
+            labels:{ sort:(a, b) => a.datasetIndex - b.datasetIndex } },
           tooltip:{ callbacks:{
             title:it => { const l = it[0].label;
               return l + (fechaDe[l] ? " · saldo al " + fechaDe[l] : ""); },
             label:c => " " + c.dataset.label + ": " + clp(c.raw),
             afterLabel:c => {
-              if (c.dataset.yAxisID !== "y1") return "";
-              const i = ccm.labels.indexOf(c.label) - 1;
-              const prev = i >= 0 ? serieSaldo[i] : null;
-              if (prev === null || prev === undefined) return "";
+              if (c.dataset.label !== "Saldo al cierre") return "";
+              const prev = c.dataIndex > 0 ? serieSaldo[c.dataIndex - 1] : null;
+              if (prev === null || prev === undefined || c.raw === null) return "";
               const d = c.raw - prev;
               return (d >= 0 ? "   ▲ +" : "   ▼ −") + clp(Math.abs(d)).slice(1) +
                      " vs mes anterior"; } } } },
         scales:{
           x:{ grid:{display:false} },
           y:{ ...ejeY, position:"left",
-              title:{ display:true, text:"Flujo del mes", color:"#64748b",
+              title:{ display:dosEjes, text:"Flujo del mes", color:"#64748b",
                       font:{size:10} } },
-          y1:{ ...ejeY, position:"right", display:haySaldo,
+          y1:{ ...ejeY, position:"right", display:dosEjes,
                grid:{ drawOnChartArea:false },
-               ticks:{ ...ejeY.ticks, color:"#2a78d6" },
+               ticks:{ ...ejeY.ticks, color:"#2a78d6", display:numerosDer },
                title:{ display:true, text:"Saldo al cierre", color:"#2a78d6",
                        font:{size:10} } } } }
     });
