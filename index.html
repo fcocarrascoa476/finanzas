@@ -288,7 +288,8 @@
   <div class="tabs">
     <button class="tab on" id="tab-rt">Mes en curso</button>
     <button class="tab" id="tab-of">Cierre mensual</button>
-      <button class="tab" id="tab-rw">Cuánto alcanza</button>
+    <button class="tab" id="tab-rw">Cuánto alcanza</button>
+    <button class="tab" id="tab-br">Todo el movimiento</button>
   </div>
 
   <!-- ===================== VISTA 1: MES EN CURSO ===================== -->
@@ -638,10 +639,49 @@
     <div class="aviso ofi">Datos <b>oficiales</b> del banco (estado de cuenta y cartola). Se actualizan una vez al mes.</div>
   </main>
 
-  <!-- ===================== VISTA 3: ANÁLISIS ===================== -->
-  
+  <!-- ===================== VISTA 4: TODO EL MOVIMIENTO ===================
+       La cuenta tal como la ve el banco. Las otras tres vistas descartan
+       cosas a propósito -el pago de la tarjeta porque la compra ya se contó,
+       Colmena porque la devuelve la suegra, el traspaso a la inversión porque
+       no es gasto- y cada exclusión está bien fundada, pero juntas dejaban al
+       usuario sin ningún lugar donde cotejar contra la cartola. Aquí no se
+       descarta nada. -->
+  <main id="vista-br" style="display:none">
+    <div class="hero" id="br-hero">
+      <div class="hero-estado" id="br-hero-estado">&mdash;</div>
+      <div class="hero-frase" id="br-hero-frase">&mdash;</div>
+      <div class="hero-accion" id="br-hero-accion"></div>
+    </div>
 
-  <!-- ===================== VISTA 4: CUÁNTO ALCANZA ===================== -->
+    <div class="aviso ofi" style="margin-bottom:14px">
+      <b>Sin filtros ni exclusiones.</b> Todo lo que entró y salió de la cuenta
+      corriente, incluido el pago de la tarjeta, los traspasos a la inversión y
+      lo que un tercero devuelve. Los totales de aquí son los que cuadran con tu
+      cartola línea por línea. Para saber <i>en qué gastaste</i>, la vista es
+      &laquo;Cierre mensual&raquo;; esta es para cotejar con el banco.
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Entró y salió, mes a mes</div>
+      <div class="chart-wrap"><canvas id="chBrFlujo"></canvas></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Lo que entró
+        <span style="color:var(--muted);font-weight:400;text-transform:none">· por categoría</span></div>
+      <p class="an-nota nota-tabla"></p>
+      <div class="wrap-tabla" id="tabla-br-entradas"></div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-title">Lo que salió
+        <span style="color:var(--muted);font-weight:400;text-transform:none">· por categoría</span></div>
+      <p class="an-nota nota-tabla"></p>
+      <div class="wrap-tabla" id="tabla-br-salidas"></div>
+    </div>
+  </main>
+
+  <!-- ===================== VISTA 3: CUÁNTO ALCANZA ===================== -->
   <main id="vista-rw" style="display:none">
     <div class="hero" id="rw-hero">
       <div class="hero-estado" id="rw-hero-estado">&mdash;</div>
@@ -2791,8 +2831,59 @@ function renderAN() {
     ico + "</div><div><h4>" + tit + "</h4><p>" + txt + "</p></div></div>").join("");
 }
 
+// ── Vista 4: todo el movimiento, sin filtros ───────────────────────
+function renderBR() {
+  const b = DATA.bruto || {};
+  const box = document.getElementById("br-hero");
+  if (!b.disponible) {
+    document.getElementById("br-hero-frase").textContent =
+      "Todavía no hay cartola cargada.";
+    return;
+  }
+  const n = b.labels.length;
+  // El último mes de la cartola puede ser el mes en curso, que va a medias.
+  // Se muestra el último CERRADO para no comparar dos días con meses enteros.
+  const enCurso = mesEnCurso();
+  let i = n - 1;
+  while (i > 0 && b.meses[i] >= enCurso) i--;
+  const ent = b.tot_entradas[i], sal = b.tot_salidas[i], neto = b.neto[i];
+
+  box.className = "hero" + (neto >= 0 ? " ok" : "");
+  document.getElementById("br-hero-estado").textContent =
+    "Movimiento real · " + b.labels[i];
+  document.getElementById("br-hero-frase").innerHTML =
+    "Entraron <b>" + clp(ent) + "</b> y salieron <b>" + clp(sal) + "</b>.";
+  document.getElementById("br-hero-accion").innerHTML =
+    (neto >= 0 ? "La cuenta quedó <b>" + clp(neto) + "</b> arriba"
+               : "La cuenta quedó <b>" + clp(Math.abs(neto)) + "</b> abajo") +
+    " en " + b.n_movs[i] + " movimientos.";
+
+  chart("chBrFlujo", {
+    type: "bar",
+    data: { labels: b.labels, datasets: [
+      { label: "Entró", data: b.tot_entradas, backgroundColor: "rgba(16,185,129,.75)", borderRadius: 4 },
+      { label: "Salió", data: b.tot_salidas, backgroundColor: "rgba(239,68,68,.72)", borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 16 } },
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: "top" },
+        tooltip: { callbacks: {
+          label: c => " " + c.dataset.label + ": " + clp(c.raw),
+          footer: it => { const j = it[0].dataIndex;
+            return (b.neto[j] >= 0 ? "Quedó arriba: " : "Quedó abajo: ") +
+                   clp(Math.abs(b.neto[j])); } } } },
+      scales: { x: { grid: { display: false } }, y: ejeY } },
+  });
+
+  const ds = (filas, base) => filas.map((f, k) => ({
+    label: f.cat, data: f.values, backgroundColor: PALETA[k % PALETA.length],
+  }));
+  pintarTablaApilada("tabla-br-entradas", ds(b.entradas), b.labels, "Origen");
+  pintarTablaApilada("tabla-br-salidas", ds(b.salidas), b.labels, "Destino");
+}
+
 // ── Tabs ───────────────────────────────────────────────────────────
-const VISTAS = ["rt", "of", "rw"];
+const VISTAS = ["rt", "of", "rw", "br"];
 VISTAS.forEach(v => {
   document.getElementById("tab-" + v).onclick = () => {
     VISTAS.forEach(x => {
@@ -2823,6 +2914,7 @@ VISTAS.forEach(v => {
     if (v === "rt") { renderRT(); renderAN(); }
     if (v === "of") { renderOF(); renderAN(); }
     if (v === "rw") renderRW();
+    if (v === "br") renderBR();
   };
 });
 
