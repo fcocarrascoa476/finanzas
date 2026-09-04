@@ -135,6 +135,30 @@
   /* La precisión sobre pagos atrasados: matiza el titular sin competir con él */
   .hero-nota { font-size:.82rem; line-height:1.45; margin-top:9px; padding-top:9px;
                border-top:1px dashed rgba(255,255,255,.22); opacity:.92; }
+
+  /* La tabla que acompaña al gráfico apilado. El color marca desviación contra
+     lo habitual de cada fila; los montos se leen sin pasar el cursor. */
+  .tabla-grupos { font-size:.78rem; }
+  .tabla-grupos td, .tabla-grupos th { padding:5px 9px; white-space:nowrap; }
+  .tabla-grupos tbody td:first-child { font-weight:600; }
+  /* En el teléfono la tabla se desplaza de lado; sin fijar la primera columna
+     uno acaba mirando una fila de montos sin saber de qué categoría son. */
+  .tabla-grupos th:first-child, .tabla-grupos td:first-child {
+    position:sticky; left:0; z-index:1; background:#fff;
+    box-shadow:1px 0 0 #e2e8f0; }
+  .tabla-grupos thead th:first-child { background:var(--navy); }
+  .tabla-grupos .fila-total td:first-child { background:#f8fafc; }
+  .tabla-grupos .punto { display:inline-block; width:9px; height:9px; border-radius:2px;
+                         margin-right:7px; vertical-align:baseline; }
+  .tabla-grupos .cero { color:#cbd5e1; }
+  .tabla-grupos .tipico { color:var(--muted); border-left:1px solid #e2e8f0; }
+  /* Dos intensidades: la fuerte es para lo que se sale de verdad */
+  .tabla-grupos .d-alto   { background:#fef2f2; color:#b91c1c; }
+  .tabla-grupos .d-alto-f { background:#fee2e2; color:#991b1b; font-weight:700; }
+  .tabla-grupos .d-bajo   { background:#f0fdf4; color:#047857; }
+  .tabla-grupos .d-bajo-f { background:#dcfce7; color:#065f46; font-weight:700; }
+  .tabla-grupos .fila-total td { border-top:2px solid var(--navy); font-weight:700;
+                                 background:#f8fafc; }
   @media (max-width:520px){ .hero-frase { font-size:1.25rem; } }
 
   /* El runway manda: los otros tres KPI son contexto */
@@ -523,6 +547,16 @@
       <p class="an-nota">Las ~39 categorías agrupadas en bloques, para ver el movimiento de fondo
         sin perderse en el detalle.</p>
       <div class="chart-wrap"><canvas id="chAnGrupos"></canvas></div>
+      <p class="an-nota" style="margin-top:16px">Los mismos montos en tabla, para leerlos sin
+        pasar el cursor. En <b style="color:#b91c1c">rojo</b> los meses que se fueron por
+        encima de lo habitual de esa categoría y en <b style="color:#047857">verde</b> los que
+        quedaron por debajo; el color aparece solo cuando la diferencia es de verdad.</p>
+      <div style="overflow-x:auto">
+        <table class="tabla-grupos">
+          <thead><tr id="an-grupos-cab"></tr></thead>
+          <tbody id="an-grupos-body"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="chart-grid">
@@ -845,6 +879,82 @@ function topCategorias(rows, n) {
   const tot = {};
   rows.forEach(m => { tot[m.cat || "Otros"] = (tot[m.cat || "Otros"] || 0) + m.monto; });
   return Object.keys(tot).sort((a,b) => tot[b] - tot[a]).slice(0, n);
+}
+
+// La tabla que acompaña al gráfico apilado: los mismos montos, legibles.
+//
+// El apilado muestra la FORMA -qué bloque creció- pero para leer un monto hay
+// que pasar el cursor por cada segmento, y en el teléfono ni eso.
+//
+// El color marca desviación contra la MEDIANA DE LA PROPIA FILA, no contra el
+// total: lo que interesa es si Alimentación se salió de lo que gasta
+// Alimentación. La mediana y no el promedio, porque un mes extraordinario
+// -mayo, con 2,2 millones de salud- arrastraría el promedio y haría que los
+// meses normales parecieran bajos.
+//
+// Se pinta solo cuando la diferencia es material en las DOS dimensiones: al
+// menos un 25% y al menos 50.000 pesos. Sin el piso en pesos, una categoría
+// que gasta 8.000 al mes salía roja por 3.000 de diferencia y la tabla
+// quedaba llena de colores que no significaban nada.
+const DESV_PCT = 0.25, DESV_PCT_FUERTE = 0.60;
+const DESV_MIN = 50000, DESV_MIN_FUERTE = 150000;
+
+function pintarTablaGrupos(datasets, meses) {
+  const cab = document.getElementById("an-grupos-cab");
+  const cuerpo = document.getElementById("an-grupos-body");
+  if (!cab || !cuerpo) return;
+  cab.innerHTML = "<th>Categoría</th>" +
+    meses.map(m => "<th class='num'>" + esc(mesLabel(m)) + "</th>").join("") +
+    "<th class='num'>Habitual</th>";
+
+  const mediana = a => {
+    const v = a.filter(x => x > 0).sort((x, y) => x - y);
+    if (!v.length) return 0;
+    const i = Math.floor(v.length / 2);
+    return v.length % 2 ? v[i] : (v[i - 1] + v[i]) / 2;
+  };
+
+  // Ordenadas por tamaño: lo que más pesa se lee primero
+  const filas = datasets.map(ds => ({
+    label: ds.label, data: ds.data, color: ds.backgroundColor,
+    tipico: mediana(ds.data),
+    total: ds.data.reduce((a, x) => a + x, 0),
+  })).sort((a, b) => b.total - a.total);
+
+  cuerpo.innerHTML = "";
+  filas.forEach(f => {
+    const tr = document.createElement("tr");
+    let html = "<td><span class='punto' style='background:" + f.color + "'></span>" +
+               esc(f.label) + "</td>";
+    f.data.forEach(v => {
+      const d = v - f.tipico;
+      const pct = f.tipico ? Math.abs(d) / f.tipico : 0;
+      let cls = "";
+      if (Math.abs(d) >= DESV_MIN_FUERTE && pct >= DESV_PCT_FUERTE) {
+        cls = d > 0 ? "d-alto-f" : "d-bajo-f";
+      } else if (Math.abs(d) >= DESV_MIN && pct >= DESV_PCT) {
+        cls = d > 0 ? "d-alto" : "d-bajo";
+      }
+      const tit = f.tipico && Math.abs(d) >= DESV_MIN
+        ? " title='" + (d > 0 ? "+" : "−") + clp(Math.abs(d)).slice(1) +
+          " que lo habitual (" + clp(f.tipico) + ")'" : "";
+      html += "<td class='num " + cls + "'" + tit + ">" +
+              (v ? clp(v) : "<span class='cero'>—</span>") + "</td>";
+    });
+    html += "<td class='num tipico'>" + clp(f.tipico) + "</td>";
+    tr.innerHTML = html;
+    cuerpo.appendChild(tr);
+  });
+
+  // El total cierra la tabla y tiene que dar lo mismo que la etiqueta sobre
+  // cada barra del gráfico de arriba.
+  const tot = meses.map((_, i) => filas.reduce((a, f) => a + f.data[i], 0));
+  const tr = document.createElement("tr");
+  tr.className = "fila-total";
+  tr.innerHTML = "<td>Total</td>" +
+    tot.map(v => "<td class='num'>" + clp(v) + "</td>").join("") +
+    "<td class='num'>" + clp(mediana(tot)) + "</td>";
+  cuerpo.appendChild(tr);
 }
 
 function chartApilado(id, labels, datasets) {
@@ -2520,8 +2630,12 @@ function renderAN() {
   const gastoTodo = (o.feed || []).filter(m => m.gasto && mesesCerrados.includes(m.mes))
     .concat(movsServG.filter(m => mesesCerrados.includes(m.mes)));
   const gruposConServ = ["Cuentas (Sencillito)"].concat(GRUPOS);
-  chartApilado("chAnGrupos", mesesCerrados.map(mesLabel),
-    apilarPorMes(gastoTodo, mesesCerrados, m => m.grupo || "Otros", gruposConServ));
+  // La tabla sale de los MISMOS datasets que el gráfico: si se recalculara por
+  // separado, las dos cosas podrían discrepar y ya sabemos cómo termina eso.
+  const dsGrupos = apilarPorMes(gastoTodo, mesesCerrados,
+                                m => m.grupo || "Otros", gruposConServ);
+  chartApilado("chAnGrupos", mesesCerrados.map(mesLabel), dsGrupos);
+  pintarTablaGrupos(dsGrupos, mesesCerrados);
 
   // Sparkline del gasto mensual, con el mes en curso destacado
   chart("chAnRitmo", {
