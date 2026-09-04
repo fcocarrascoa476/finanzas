@@ -138,6 +138,7 @@
 
   /* La tabla que acompaña al gráfico apilado. El color marca desviación contra
      lo habitual de cada fila; los montos se leen sin pasar el cursor. */
+  .wrap-tabla { overflow-x:auto; }
   .tabla-grupos { font-size:.78rem; }
   .tabla-grupos td, .tabla-grupos th { padding:5px 9px; white-space:nowrap; }
   .tabla-grupos tbody td:first-child { font-weight:600; }
@@ -423,6 +424,8 @@
       <div class="card-title">Este mes contra los anteriores <span id="rt-comp-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
       <p class="an-nota" id="rt-comp-resumen"></p>
       <div class="chart-wrap"><canvas id="chRtComp"></canvas></div>
+      <p class="an-nota nota-tabla" style="margin-top:16px"></p>
+      <div class="wrap-tabla" id="tabla-rt-comp"></div>
     </div>
 
     <div class="card-full" id="rt-card-usd" style="display:none">
@@ -547,16 +550,8 @@
       <p class="an-nota">Las ~39 categorías agrupadas en bloques, para ver el movimiento de fondo
         sin perderse en el detalle.</p>
       <div class="chart-wrap"><canvas id="chAnGrupos"></canvas></div>
-      <p class="an-nota" style="margin-top:16px">Los mismos montos en tabla, para leerlos sin
-        pasar el cursor. En <b style="color:#b91c1c">rojo</b> los meses que se fueron por
-        encima de lo habitual de esa categoría y en <b style="color:#047857">verde</b> los que
-        quedaron por debajo; el color aparece solo cuando la diferencia es de verdad.</p>
-      <div style="overflow-x:auto">
-        <table class="tabla-grupos">
-          <thead><tr id="an-grupos-cab"></tr></thead>
-          <tbody id="an-grupos-body"></tbody>
-        </table>
-      </div>
+      <p class="an-nota nota-tabla" style="margin-top:16px"></p>
+      <div class="wrap-tabla" id="tabla-an-grupos"></div>
     </div>
 
     <div class="chart-grid">
@@ -579,13 +574,17 @@
     <div class="card-full">
       <div class="card-title">Evolución por categoría <span style="color:var(--muted);font-weight:400;text-transform:none">· solo tarjeta de crédito</span> <span style="color:var(--muted);font-weight:400;text-transform:none">· top 6 + otros (tarjeta)</span></div>
       <div class="chart-wrap"><canvas id="chOfCatMes"></canvas></div>
+      <p class="an-nota nota-tabla" style="margin-top:16px"></p>
+      <div class="wrap-tabla" id="tabla-of-catmes"></div>
     </div>
 
     <div class="card-full" id="of-card-serv" style="display:none">
       <div class="card-title">Cuentas que pagas juntas <span style="color:var(--muted);font-weight:400;text-transform:none">· abiertas del comprobante</span></div>
       <p class="an-nota">En la cartola son una sola transferencia. Esto es lo que hay dentro.</p>
       <div class="chart-wrap"><canvas id="chOfServicios"></canvas></div>
-      <div id="of-serv-mes" style="font-size:.8rem;color:var(--muted);margin:14px 0 6px"></div>
+      <p class="an-nota nota-tabla" style="margin-top:16px"></p>
+      <div class="wrap-tabla" id="tabla-of-serv"></div>
+      <div id="of-serv-mes" style="font-size:.8rem;color:var(--muted);margin:18px 0 6px"></div>
       <table>
         <thead><tr><th>Empresa</th><th>Categoría</th><th class="num">Monto</th></tr></thead>
         <tbody id="of-serv-tabla"></tbody>
@@ -896,66 +895,91 @@ function topCategorias(rows, n) {
 // menos un 25% y al menos 50.000 pesos. Sin el piso en pesos, una categoría
 // que gasta 8.000 al mes salía roja por 3.000 de diferencia y la tabla
 // quedaba llena de colores que no significaban nada.
-const DESV_PCT = 0.25, DESV_PCT_FUERTE = 0.60;
-const DESV_MIN = 50000, DESV_MIN_FUERTE = 150000;
+// 35% y no 25%: con el umbral bajo, la tabla de la tarjeta -que se mueve entre
+// 3,8 millones y 725 mil según el mes- pintaba más de la mitad de sus celdas.
+// Cuando casi todo está marcado, el color deja de marcar.
+const DESV_PCT = 0.35, DESV_PCT_FUERTE = 0.60;
+// El piso en pesos es PROPORCIONAL al tamaño de la tabla, no un monto fijo.
+// Un fijo de 50.000 servía en la tabla de grandes categorías -3,6 millones al
+// mes- y dejaba sin marcar media tabla en la de Sencillito, que se mueve en
+// 744.000. Lo que hace "material" a una diferencia depende de la escala de lo
+// que se está mirando.
+const DESV_FRAC = 0.015, DESV_FRAC_FUERTE = 0.045, DESV_PISO = 15000;
 
-function pintarTablaGrupos(datasets, meses) {
-  const cab = document.getElementById("an-grupos-cab");
-  const cuerpo = document.getElementById("an-grupos-body");
-  if (!cab || !cuerpo) return;
-  cab.innerHTML = "<th>Categoría</th>" +
-    meses.map(m => "<th class='num'>" + esc(mesLabel(m)) + "</th>").join("") +
-    "<th class='num'>Habitual</th>";
+function _mediana(a) {
+  const v = a.filter(x => x > 0).sort((x, y) => x - y);
+  if (!v.length) return 0;
+  const i = Math.floor(v.length / 2);
+  return v.length % 2 ? v[i] : (v[i - 1] + v[i]) / 2;
+}
 
-  const mediana = a => {
-    const v = a.filter(x => x > 0).sort((x, y) => x - y);
-    if (!v.length) return 0;
-    const i = Math.floor(v.length / 2);
-    return v.length % 2 ? v[i] : (v[i - 1] + v[i]) / 2;
-  };
+// Construye la tabla entera dentro de `idContenedor`. `datasets` y `labels`
+// son los MISMOS que recibe el gráfico, así las dos cosas no pueden discrepar.
+function pintarTablaApilada(idContenedor, datasets, labels, encabezado) {
+  const cont = document.getElementById(idContenedor);
+  if (!cont) return;
+  if (!datasets || !datasets.length) { cont.innerHTML = ""; return; }
 
   // Ordenadas por tamaño: lo que más pesa se lee primero
   const filas = datasets.map(ds => ({
-    label: ds.label, data: ds.data, color: ds.backgroundColor,
-    tipico: mediana(ds.data),
-    total: ds.data.reduce((a, x) => a + x, 0),
+    label: ds.label, data: ds.data || [], color: ds.backgroundColor,
+    tipico: _mediana(ds.data || []),
+    total: (ds.data || []).reduce((a, x) => a + x, 0),
   })).sort((a, b) => b.total - a.total);
 
-  cuerpo.innerHTML = "";
-  filas.forEach(f => {
-    const tr = document.createElement("tr");
-    let html = "<td><span class='punto' style='background:" + f.color + "'></span>" +
-               esc(f.label) + "</td>";
-    f.data.forEach(v => {
-      const d = v - f.tipico;
-      const pct = f.tipico ? Math.abs(d) / f.tipico : 0;
-      let cls = "";
-      if (Math.abs(d) >= DESV_MIN_FUERTE && pct >= DESV_PCT_FUERTE) {
-        cls = d > 0 ? "d-alto-f" : "d-bajo-f";
-      } else if (Math.abs(d) >= DESV_MIN && pct >= DESV_PCT) {
-        cls = d > 0 ? "d-alto" : "d-bajo";
-      }
-      const tit = f.tipico && Math.abs(d) >= DESV_MIN
-        ? " title='" + (d > 0 ? "+" : "−") + clp(Math.abs(d)).slice(1) +
-          " que lo habitual (" + clp(f.tipico) + ")'" : "";
-      html += "<td class='num " + cls + "'" + tit + ">" +
-              (v ? clp(v) : "<span class='cero'>—</span>") + "</td>";
-    });
-    html += "<td class='num tipico'>" + clp(f.tipico) + "</td>";
-    tr.innerHTML = html;
-    cuerpo.appendChild(tr);
-  });
+  const tot = labels.map((_, i) => filas.reduce((a, f) => a + (f.data[i] || 0), 0));
+  const escala = _mediana(tot) || Math.max(...tot, 0);
+  const min = Math.max(DESV_PISO, escala * DESV_FRAC);
+  const minF = Math.max(DESV_PISO * 3, escala * DESV_FRAC_FUERTE);
 
-  // El total cierra la tabla y tiene que dar lo mismo que la etiqueta sobre
-  // cada barra del gráfico de arriba.
-  const tot = meses.map((_, i) => filas.reduce((a, f) => a + f.data[i], 0));
-  const tr = document.createElement("tr");
-  tr.className = "fila-total";
-  tr.innerHTML = "<td>Total</td>" +
+  // Solo se colorea una fila que tenga un patrón del que desviarse. Una
+  // categoría que aparece dos meses de seis no tiene "lo habitual": su mediana
+  // es un accidente, y contra ella cualquier mes con actividad sale rojo. Sin
+  // este filtro la tabla de la tarjeta pintaba la mitad de sus celdas y el
+  // color dejaba de significar nada.
+  const celda = (v, tipico, estable) => {
+    const d = v - tipico;
+    const pct = tipico ? Math.abs(d) / tipico : 0;
+    let cls = "";
+    if (estable) {
+      if (Math.abs(d) >= minF && pct >= DESV_PCT_FUERTE) cls = d > 0 ? "d-alto-f" : "d-bajo-f";
+      else if (Math.abs(d) >= min && pct >= DESV_PCT)    cls = d > 0 ? "d-alto" : "d-bajo";
+    }
+    const tit = cls
+      ? " title='" + (d > 0 ? "+" : "−") + clp(Math.abs(d)).slice(1) +
+        " que lo habitual (" + clp(tipico) + ")'" : "";
+    return "<td class='num " + cls + "'" + tit + ">" +
+           (v ? clp(v) : "<span class='cero'>—</span>") + "</td>";
+  };
+
+  cont.innerHTML =
+    "<table class='tabla-grupos'><thead><tr><th>" + esc(encabezado || "Categoría") +
+    "</th>" + labels.map(l => "<th class='num'>" + esc(l) + "</th>").join("") +
+    "<th class='num'>Habitual</th></tr></thead><tbody>" +
+    filas.map(f => {
+      const presencia = f.data.filter(x => x > 0).length;
+      const estable = presencia >= Math.ceil(labels.length / 2) && f.tipico > 0;
+      return "<tr><td><span class='punto' style='background:" + f.color + "'></span>" +
+        esc(f.label) + "</td>" +
+        f.data.map(v => celda(v || 0, f.tipico, estable)).join("") +
+        "<td class='num tipico'>" + (estable ? clp(f.tipico)
+          : "<span class='cero' title='Aparece en " + presencia + " de " +
+            labels.length + " periodos: no hay un patrón del que desviarse'>—</span>") +
+        "</td></tr>";
+    }).join("") +
+    // El total cierra la tabla y tiene que dar lo mismo que la etiqueta sobre
+    // cada barra del gráfico de arriba.
+    "<tr class='fila-total'><td>Total</td>" +
     tot.map(v => "<td class='num'>" + clp(v) + "</td>").join("") +
-    "<td class='num'>" + clp(mediana(tot)) + "</td>";
-  cuerpo.appendChild(tr);
+    "<td class='num'>" + clp(_mediana(tot)) + "</td></tr></tbody></table>";
 }
+
+// La nota que explica el color. Es la misma para las cuatro tablas.
+const NOTA_TABLA =
+  "Los mismos montos en tabla, para leerlos sin pasar el cursor. En " +
+  "<b style='color:#b91c1c'>rojo</b> lo que se fue por encima de lo habitual de " +
+  "esa fila y en <b style='color:#047857'>verde</b> lo que quedó por debajo; el " +
+  "color aparece solo cuando la diferencia es de verdad.";
 
 function chartApilado(id, labels, datasets) {
   chart(id, {
@@ -1067,6 +1091,9 @@ function mostrar(datos) {
   DATA = datos;
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "block";
+  // La leyenda del color es la misma en las cuatro tablas: se escribe una vez
+  // en vez de repetirla en el HTML de cada tarjeta.
+  document.querySelectorAll(".nota-tabla").forEach(p => p.innerHTML = NOTA_TABLA);
   // Frescura de los DATOS, no del archivo. El tablero se regenera aunque la
   // descarga de correos falle, asi que "actualizado <hoy>" podia mostrarse
   // sobre datos de hace dias. Se muestra hasta cuando llegan los movimientos y
@@ -1960,14 +1987,15 @@ function pintarServicios() {
   if (!s.disponible || !s.meses || !s.meses.length) { card.style.display = "none"; return; }
   card.style.display = "";
 
-  chartApilado("chOfServicios", s.labels,
-    s.series.map((serie, i) => ({
-      label: serie.cat,
-      data: serie.values,
-      // El dividendo es más de la mitad del total: se lleva el color fuerte
-      backgroundColor: serie.cat === "Dividendo hipotecario"
-        ? "#1e3a5f" : PALETA[i % PALETA.length],
-    })));
+  const dsServ = s.series.map((serie, i) => ({
+    label: serie.cat,
+    data: serie.values,
+    // El dividendo es más de la mitad del total: se lleva el color fuerte
+    backgroundColor: serie.cat === "Dividendo hipotecario"
+      ? "#1e3a5f" : PALETA[i % PALETA.length],
+  }));
+  chartApilado("chOfServicios", s.labels, dsServ);
+  pintarTablaApilada("tabla-of-serv", dsServ, s.labels, "Cuenta");
 
   const total = (s.detalle || []).reduce((a, d) => a + d.monto, 0);
   document.getElementById("of-serv-mes").textContent =
@@ -2035,6 +2063,9 @@ function pintarComparativo(o) {
     backgroundColor: s.cat === CAT_USD ? "#00a0b0" : PALETA[i % PALETA.length],
   }));
   chartApilado("chRtComp", c.labels, datasets);
+  // Aquí todos los meses vienen recortados al mismo día, así que la mediana de
+  // cada fila y el mes en curso son comparables entre sí.
+  pintarTablaApilada("tabla-rt-comp", datasets, c.labels, "Categoría");
 
   // El titular: cómo va el mes en curso contra el promedio del mismo tramo
   const n = c.totales.length, act = c.totales[n - 1];
@@ -2264,9 +2295,11 @@ function renderOF() {
   // se pagan por transferencia desde la cuenta corriente y no aparecen en
   // ninguna factura de tarjeta. Sencillito vive en "Tendencia por gran
   // categoría", que sí mide el gasto completo.
-  chartApilado("chOfCatMes", meses.map(mesLabel),
-    apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses,
-                 m => m.cat || "Otros", TOP_CATS_OF));
+  const lblCatMes = meses.map(mesLabel);
+  const dsCatMes = apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses,
+                                m => m.cat || "Otros", TOP_CATS_OF);
+  chartApilado("chOfCatMes", lblCatMes, dsCatMes);
+  pintarTablaApilada("tabla-of-catmes", dsCatMes, lblCatMes, "Categoría");
 
   // Flujo y saldo en un solo gráfico.
   //
@@ -2634,8 +2667,9 @@ function renderAN() {
   // separado, las dos cosas podrían discrepar y ya sabemos cómo termina eso.
   const dsGrupos = apilarPorMes(gastoTodo, mesesCerrados,
                                 m => m.grupo || "Otros", gruposConServ);
-  chartApilado("chAnGrupos", mesesCerrados.map(mesLabel), dsGrupos);
-  pintarTablaGrupos(dsGrupos, mesesCerrados);
+  const lblGrupos = mesesCerrados.map(mesLabel);
+  chartApilado("chAnGrupos", lblGrupos, dsGrupos);
+  pintarTablaApilada("tabla-an-grupos", dsGrupos, lblGrupos, "Categoría");
 
   // Sparkline del gasto mensual, con el mes en curso destacado
   chart("chAnRitmo", {
