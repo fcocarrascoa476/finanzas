@@ -1041,10 +1041,10 @@ function pintarTablaApilada(idContenedor, datasets, labels, encabezado) {
 const PIES = {
   rt: ["Mes en curso",
     "<b>Qué ves:</b> lo que el banco ha notificado del mes en curso, del día 1 " +
-    "hasta hoy. Incluye el pago de las cuentas de Sencillito en cuanto se hace " +
-    "&mdash;llega el aviso de la transferencia el mismo día&mdash;, pero como " +
-    "un solo monto: abrirlo en luz, gas y agua necesita el comprobante, que " +
-    "llega después.",
+    "hasta hoy. Si pagas tus cuentas agrupadas en una sola transferencia, se " +
+    "incluye en cuanto se hace &mdash;el aviso llega el mismo día&mdash;, pero " +
+    "como un solo monto: abrirla en luz, gas y agua necesita el comprobante, " +
+    "que llega después.",
     "<b>Qué queda fuera:</b> lo que el banco no alcanzó a notificar y los " +
     "cargos que solo aparecen en la cartola.",
     "<b>Por eso:</b> esta cifra va a ser algo menor que la del mes ya cerrado. " +
@@ -1052,8 +1052,8 @@ const PIES = {
 
   of: ["Cierre mensual",
     "<b>Qué ves:</b> meses ya cerrados. El gasto son las compras que el banco " +
-    "notifica más las cuentas de Sencillito, abiertas por categoría. Es la " +
-    "única base que se puede desglosar.",
+    "notifica más las cuentas agrupadas, abiertas por categoría. Es la única " +
+    "base que se puede desglosar.",
     "<b>Qué queda fuera:</b> los cargos que la cartola trae sin decir en qué " +
     "fueron, el pago de la tarjeta &mdash;la compra ya se contó el día que se " +
     "hizo&mdash; y lo que un tercero devuelve.",
@@ -2358,7 +2358,7 @@ function renderOF() {
   if (notaTot) notaTot.innerHTML = cerrados.length
     ? "Promedio de los " + cerrados.length + " meses cerrados: <b>" + clp(prom) +
       "</b>. En rojo los que superaron ese promedio. Suma las compras del " +
-      "período más las cuentas de Sencillito, igual que los gráficos de abajo."
+      "período más las cuentas agrupadas, igual que los gráficos de abajo."
     : "";
   document.getElementById("kpi-comprometido").textContent = clp(k.total_comprometido);
   document.getElementById("kpi-n-cuotas").textContent     = k.n_activas + " activas + " + k.n_nuevas + " nuevas";
