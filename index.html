@@ -138,6 +138,18 @@
 
   /* La tabla que acompaña al gráfico apilado. El color marca desviación contra
      lo habitual de cada fila; los montos se leen sin pasar el cursor. */
+  /* El pie de cada vista: dice qué se está mirando y qué queda fuera.
+     Deliberadamente discreto -sin fondo de color ni borde grueso- porque es
+     material de consulta, no algo que competir con los números. Pero va SIEMPRE
+     al final de cada pestaña, que es donde uno llega con la duda. */
+  .pie-vista { margin:22px 0 6px; padding:14px 16px; border-top:1px solid #e2e8f0;
+               font-size:.78rem; line-height:1.55; color:var(--muted); }
+  .pie-vista b { color:#475569; }
+  .pie-vista .pv-t { font-weight:700; color:#64748b; text-transform:uppercase;
+                     letter-spacing:.5px; font-size:.68rem; margin-bottom:8px; }
+  .pie-vista p { margin:0 0 6px; }
+  .pie-vista p:last-child { margin-bottom:0; }
+
   .wrap-tabla { overflow-x:auto; }
   .tabla-grupos { font-size:.78rem; }
   .tabla-grupos td, .tabla-grupos th { padding:5px 9px; white-space:nowrap; }
@@ -722,6 +734,14 @@
       </div>
       <div class="esc-panel" id="rw-esc-panel"></div>
       <p class="an-nota" id="rw-esc-nota" style="margin:12px 0 0"></p>
+      <!-- El histórico vive aquí, junto al selector: es el respaldo de las
+           cuatro medidas y no una tarjeta aparte. Ojo, NO es el mismo gráfico
+           que "Cuánto gastaste cada mes" de Cierre mensual: este mide la caja
+           de la cartola y aquel las compras que se pueden abrir por categoría. -->
+      <p class="an-nota" style="margin:18px 0 0"><b>De dónde salen esas medidas</b>
+        &mdash; lo que salió de la cuenta cada mes. En rojo los que superaron el
+        gasto mensual estimado.</p>
+      <div class="chart-wrap"><canvas id="chRwGasto"></canvas></div>
     </details>
 
     <div class="card-full">
@@ -730,13 +750,27 @@
       <div class="chart-wrap"><canvas id="chRwSerie"></canvas></div>
     </div>
 
-    <div class="card-full" id="rw-alerta" style="display:none;border-left:5px solid var(--muted)">
-      <div class="card-title" id="rw-alerta-titulo"></div>
-      <p id="rw-alerta-msg" style="font-size:1.02rem;margin:6px 0 12px"></p>
-      <table>
-        <thead><tr><th>Cuándo</th><th>Qué se paga</th><th class="num">Monto</th></tr></thead>
-        <tbody id="rw-alerta-detalle"></tbody>
-      </table>
+    <!-- Rescate: la urgencia y la política, en una sola tarjeta.
+         Estaban separadas y decían lo mismo desde dos ángulos -"saca X antes
+         del Y" y "cada cuánto conviene sacar"-, obligando a leer dos veces
+         para una sola decisión. -->
+    <div class="card-full" id="rw-card-rescate">
+      <div class="card-title">Sacar plata de la inversión</div>
+      <div id="rw-alerta" style="display:none;margin:4px 0 18px;padding-left:12px;
+                                 border-left:4px solid var(--muted)">
+        <div style="font-weight:700" id="rw-alerta-titulo"></div>
+        <p id="rw-alerta-msg" style="font-size:1.02rem;margin:6px 0 10px"></p>
+        <table>
+          <thead><tr><th>Cuándo</th><th>Qué se paga</th><th class="num">Monto</th></tr></thead>
+          <tbody id="rw-alerta-detalle"></tbody>
+        </table>
+      </div>
+      <p class="an-nota">Evalué mover los pagos a después de que entra la plata
+        y <b>no sirve</b>: con el mes en déficit, el saldo final es el mismo se
+        pague el 8 o el 26 &mdash;y adelantarlos empeora, porque el día crítico
+        se corre del 12 al 8. Lo que sí puedes decidir es cada cuánto rescatar.</p>
+      <div id="rw-rescate"></div>
+      <p class="an-nota" id="rw-rescate-nota" style="margin-top:12px"></p>
     </div>
 
     <div class="card-full" id="rw-card-seguimiento" style="display:none">
@@ -744,16 +778,6 @@
       <p class="an-nota">Se verifica mirando la cuenta, no preguntándote: un
         rescate deja un abono. Si no aparece, quedó sin hacer.</p>
       <div id="rw-seguimiento"></div>
-    </div>
-
-    <div class="card-full" id="rw-card-rescate">
-      <div class="card-title">Cuándo sacar plata de la inversión</div>
-      <p class="an-nota">Evalué mover los pagos a después de que entra la plata
-        y <b>no sirve</b>: con el mes en déficit, el saldo final es el mismo se
-        pague el 8 o el 26 &mdash;y adelantarlos empeora, porque el día crítico
-        se corre del 12 al 8. Lo que sí puedes decidir es cada cuánto rescatar.</p>
-      <div id="rw-rescate"></div>
-      <p class="an-nota" id="rw-rescate-nota" style="margin-top:12px"></p>
     </div>
 
     <div class="card-full">
@@ -765,10 +789,15 @@
       <div class="palanca-total" id="rw-palancas-total"></div>
     </div>
 
-    <div class="card-full">
-      <div class="card-title">Dónde se va la plata</div>
-      <p class="an-nota">Cada barra es un comercio, no una categoría. "Salud
-        $142.280" no se puede accionar; "Solufar, 37 veces en 6 meses" sí.</p>
+    <!-- Los dos insumos de las palancas, juntos y plegados: son el detalle de
+         "dónde recortar" y antes ocupaban dos tarjetas abiertas con listas
+         largas, que es lo que estiraba la vista. -->
+    <details class="card-full" id="rw-card-goteo">
+      <summary>Dónde recortar &mdash; comercios y goteo</summary>
+
+      <p class="an-nota" style="margin-top:10px"><b>Dónde se va la plata.</b>
+        Cada barra es un comercio, no una categoría. "Salud $142.280" no se
+        puede accionar; "Solufar, 37 veces en 6 meses" sí.</p>
       <div id="rw-comercios"></div>
       <p class="an-nota" style="margin-top:10px">
         <span class="et et-rec">recurrente</span> pasa casi todos los meses ·
@@ -776,13 +805,11 @@
         <span class="et et-uni">único</span> una sola vez, no se repite ·
         <span class="et et-fij">fijo</span> ya comprometido
       </p>
-    </div>
 
-    <div class="card-full" id="rw-card-goteo">
-      <div class="card-title">El goteo</div>
-      <p class="an-nota">Compras chicas y seguidas. Ninguna duele por sí sola y
-        juntas pesan más que el supermercado: es el gasto más fácil de bajar
-        porque nadie lo está defendiendo, simplemente no se ve.</p>
+      <p class="an-nota" style="margin-top:22px"><b>El goteo.</b> Compras chicas
+        y seguidas. Ninguna duele por sí sola y juntas pesan más que el
+        supermercado: es el gasto más fácil de bajar porque nadie lo está
+        defendiendo, simplemente no se ve.</p>
       <div class="goteo-hero">
         <div>
           <div class="goteo-num" id="rw-goteo-monto">&mdash;</div>
@@ -790,8 +817,10 @@
         </div>
       </div>
       <div id="rw-goteo-lista"></div>
-    </div>
+    </details>
 
+    <!-- El comprometido es UNA de las cuatro filas del reparto: su detalle va
+         adentro, no en una tarjeta hermana que repetía la misma idea. -->
     <details class="card-full"><summary>En qué se divide tu gasto</summary>
       <p class="an-nota">No todo lo que no está comprometido es una decisión libre.
         Nadie decide dejar de comer: separar las cuatro cosas es lo que deja ver
@@ -804,33 +833,15 @@
         <tbody id="rw-grupos"></tbody>
       </table>
       <div id="rw-reparto-detalle" style="margin-top:16px"></div>
-    </details>
 
-    <details class="card-full"><summary>Qué es lo que ya está decidido</summary>
-      <p class="an-nota">Estos pagos salen igual, decidas lo que decidas. El
-        resto de tu gasto es sobre lo que sí puedes actuar.</p>
+      <p class="an-nota" style="margin-top:22px"><b>Qué es lo que ya está
+        decidido.</b> Estos pagos salen igual, decidas lo que decidas.</p>
       <table>
         <thead><tr><th>Compromiso</th><th class="num">Al mes</th></tr></thead>
         <tbody id="rw-comprometido-detalle"></tbody>
       </table>
       <p class="an-nota" id="rw-cuotas-nota" style="margin-top:12px"></p>
     </details>
-
-    <details class="card-full"><summary>Tu gasto mes a mes</summary>
-      <div class="chart-wrap"><canvas id="chRwGasto"></canvas></div>
-    </details>
-
-    <div class="chart-grid">
-      
-      <div class="card">
-        <div class="card-title">De dónde salen los fondos</div>
-        <table>
-          <thead><tr><th>Origen</th><th class="num">Monto</th><th>Actualizado</th></tr></thead>
-          <tbody id="rw-fuentes"></tbody>
-        </table>
-        <p class="an-nota" id="rw-aviso-viejo" style="margin-top:12px"></p>
-      </div>
-    </div>
 
     <div class="card-full" id="rw-card-anomalias">
       <div class="card-title">Revisa esto: puede estar mal contado</div>
@@ -840,8 +851,13 @@
       <div id="rw-anomalias"></div>
     </div>
 
-    <details class="card-full"><summary>Lo que hay que tener presente</summary>
-      <div id="rw-notas"></div>
+    <details class="card-full"><summary>De dónde salen los fondos y otros supuestos</summary>
+      <table>
+        <thead><tr><th>Origen</th><th class="num">Monto</th><th>Actualizado</th></tr></thead>
+        <tbody id="rw-fuentes"></tbody>
+      </table>
+      <p class="an-nota" id="rw-aviso-viejo" style="margin-top:12px"></p>
+      <div id="rw-notas" style="margin-top:18px"></div>
     </details>
   </main>
 </div>
@@ -1014,6 +1030,69 @@ function pintarTablaApilada(idContenedor, datasets, labels, encabezado) {
     "<td class='num'>" + clp(_mediana(tot)) + "</td></tr></tbody></table>";
 }
 
+// ── El pie de cada vista ───────────────────────────────────────────
+//
+// Las cuatro vistas dan cifras distintas del mismo mes y eso es correcto: cada
+// una mide algo distinto. Pero sin decirlo en alguna parte, la reacción sana
+// frente a dos números que no cuadran es desconfiar de los dos.
+//
+// Va al final de cada pestaña -donde uno llega justo con esa duda- y en tono
+// bajo: no compite con los números, está ahí cuando se lo busca.
+const PIES = {
+  rt: ["Mes en curso",
+    "<b>Qué ves:</b> lo que el banco ha notificado del mes en curso, del día 1 " +
+    "hasta hoy.",
+    "<b>Qué queda fuera:</b> las cuentas de Sencillito &mdash;llegan con el " +
+    "comprobante, cerca de $750.000 al mes&mdash;, lo que el banco no alcanzó a " +
+    "notificar y los cargos que solo aparecen en la cartola.",
+    "<b>Por eso:</b> esta cifra siempre va a ser menor que la del mes ya " +
+    "cerrado. No es el gasto del mes: es lo que se sabe hasta ahora."],
+
+  of: ["Cierre mensual",
+    "<b>Qué ves:</b> meses ya cerrados. El gasto son las compras que el banco " +
+    "notifica más las cuentas de Sencillito, abiertas por categoría. Es la " +
+    "única base que se puede desglosar.",
+    "<b>Qué queda fuera:</b> los cargos que la cartola trae sin decir en qué " +
+    "fueron, el pago de la tarjeta &mdash;la compra ya se contó el día que se " +
+    "hizo&mdash; y lo que un tercero devuelve.",
+    "<b>Por eso:</b> da menos que «Cuánto alcanza», que sí cuenta esos cargos " +
+    "sin detalle."],
+
+  rw: ["Cuánto alcanza",
+    "<b>Qué ves:</b> cuánto hay que financiar cada mes y hasta cuándo alcanza. " +
+    "El gasto es la caja de la cartola, sin los movimientos de capital, más las " +
+    "compras con tarjeta del mes.",
+    "<b>Qué se ajusta:</b> los compromisos declarados entran con su monto " +
+    "típico y no con lo que se pagó ese mes en concreto. Por eso agosto, que " +
+    "pagó cuatro mensualidades del colegio, aquí aparece con una: para " +
+    "proyectar sirve el compromiso estable, no la irregularidad de un mes.",
+    "<b>Por eso:</b> da más que «Cierre mensual» y menos que «Todo el " +
+    "movimiento»."],
+
+  br: ["Todo el movimiento",
+    "<b>Qué ves:</b> la cuenta corriente tal como la ve el banco. Sin ninguna " +
+    "exclusión: el pago de la tarjeta, los traspasos a la inversión y lo que un " +
+    "tercero devuelve están todos.",
+    "<b>Qué queda fuera:</b> nada de la cuenta corriente. Sí quedan fuera las " +
+    "compras con tarjeta de crédito hasta que se facturan, porque todavía no " +
+    "salieron de aquí.",
+    "<b>Por eso:</b> es la única vista cuyos totales cuadran línea por línea " +
+    "con tu cartola. Para saber en qué gastaste, la vista es «Cierre mensual»."],
+};
+
+function pintarPies() {
+  Object.keys(PIES).forEach(v => {
+    const main = document.getElementById("vista-" + v);
+    if (!main || main.querySelector(".pie-vista")) return;
+    const [tit, ...lineas] = PIES[v];
+    const d = document.createElement("div");
+    d.className = "pie-vista";
+    d.innerHTML = "<div class='pv-t'>Qué muestra «" + tit + "»</div>" +
+                  lineas.map(x => "<p>" + x + "</p>").join("");
+    main.appendChild(d);
+  });
+}
+
 // La nota que explica el color. Es la misma para las cuatro tablas.
 const NOTA_TABLA =
   "Los mismos montos en tabla, para leerlos sin pasar el cursor. En " +
@@ -1134,6 +1213,7 @@ function mostrar(datos) {
   // La leyenda del color es la misma en las cuatro tablas: se escribe una vez
   // en vez de repetirla en el HTML de cada tarjeta.
   document.querySelectorAll(".nota-tabla").forEach(p => p.innerHTML = NOTA_TABLA);
+  pintarPies();
   // Frescura de los DATOS, no del archivo. El tablero se regenera aunque la
   // descarga de correos falle, asi que "actualizado <hoy>" podia mostrarse
   // sobre datos de hace dias. Se muestra hasta cuando llegan los movimientos y
