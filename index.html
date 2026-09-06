@@ -433,6 +433,17 @@
 
     
 
+    <!-- Semana a semana. El mes al día de hoy dice cómo vas contra el mes;
+         esto dice si el ritmo de esta semana se parece al de las anteriores,
+         que es la escala en la que uno todavía puede corregir. -->
+    <div class="card-full" id="rt-card-sem" style="display:none">
+      <div class="card-title">Semana a semana
+        <span style="color:var(--muted);font-weight:400;text-transform:none">· últimas 10</span></div>
+      <p class="an-nota" id="rt-sem-resumen"></p>
+      <div class="chart-wrap"><canvas id="chRtSemana"></canvas></div>
+      <p class="an-nota" id="rt-sem-nota" style="margin-top:12px"></p>
+    </div>
+
     <div class="card-full" id="rt-card-comp" style="display:none">
       <div class="card-title">Este mes contra los anteriores <span id="rt-comp-nota" style="color:var(--muted);font-weight:400;text-transform:none"></span></div>
       <p class="an-nota" id="rt-comp-resumen"></p>
@@ -1563,6 +1574,7 @@ function renderRT() {
   // reventar renderRT() entero, dejando en blanco los graficos que si estan.
 
   pintarUSD(movs, esActual, o);
+  pintarSemanas();
   pintarComparativo(o);
 
   pintarTabla({
@@ -2165,6 +2177,87 @@ function pintarUSD(movs, esActual, o) {
     "<td class='num'>" + (v.n > 1 ? v.n + "×" : "") + "</td>" +
     "<td class='num'>US$ " + v.usd.toFixed(2) + "</td>" +
     "<td class='num' style='color:var(--muted)'>" + (v.conf === v.n ? "" : "≈ ") + clp(v.clp) + "</td></tr>").join("");
+}
+
+// ── Semana a semana ────────────────────────────────────────────────
+//
+// El mes al día de hoy responde "¿cómo voy contra el mes?". Esta responde
+// "¿el ritmo de esta semana se parece al de las anteriores?", que es la escala
+// en la que todavía se puede corregir algo.
+//
+// Dos cosas que el dato obligó a separar:
+//   - los compromisos (cuentas agrupadas, colegio, gasto común) caen entre el
+//     26 y el 30, así que la semana que contiene esos días siempre es la cara.
+//     Van apilados aparte para que la barra alta se explique sola.
+//   - la semana en curso va a medias: se compara contra el MISMO tramo de las
+//     anteriores y solo sobre lo decidible.
+function pintarSemanas() {
+  const s = DATA.semanas || {};
+  const card = document.getElementById("rt-card-sem");
+  if (!card) return;
+  if (!s.disponible || !(s.semanas || []).length) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const a = s.actual || {};
+  const res = document.getElementById("rt-sem-resumen");
+  if (a.tipico_resto) {
+    const arriba = a.dif > 0;
+    // El domingo la semana ya está completa: decir "en 7 días de esta semana"
+    // suena a que va a medias cuando ya terminó.
+    const cuando = a.dias >= 7 ? "Esta semana gastaste"
+                 : "En " + a.dias + (a.dias === 1 ? " día" : " días") +
+                   " de esta semana llevas";
+    const contra = a.dias >= 7 ? "que una semana habitual tuya"
+                 : "que tus últimas semanas al mismo día";
+    res.innerHTML = cuando + " <b>" + clp(a.resto) + "</b> en gasto decidible, " +
+      "<b style='color:" + (arriba ? "var(--red)" : "var(--green)") + "'>" +
+      (arriba ? "▲ " : "▼ ") + clp(Math.abs(a.dif)) + " (" + (arriba ? "+" : "") +
+      a.pct + "%)</b> " + contra + " (" + clp(a.tipico_resto) + ").";
+  } else {
+    res.textContent = "Todavía no hay semanas cerradas con las que comparar.";
+  }
+
+  const et = s.semanas.map(x => x.etiqueta);
+  chart("chRtSemana", {
+    type: "bar",
+    data: { labels: et, datasets: [
+      { label: "Decidible", data: s.semanas.map(x => x.resto), borderRadius: 4,
+        backgroundColor: s.semanas.map(x => x.en_curso
+          ? "rgba(37,99,235,.45)" : "rgba(37,99,235,.8)") },
+      { label: "Compromisos", data: s.semanas.map(x => x.comprometido),
+        borderRadius: 4,
+        backgroundColor: s.semanas.map(x => x.en_curso
+          ? "rgba(148,163,184,.45)" : "rgba(148,163,184,.85)") }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 16 } },
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: "top" },
+        tooltip: { callbacks: {
+          title: it => { const x = s.semanas[it[0].dataIndex];
+            return "Semana del " + x.inicio + " al " + x.fin +
+                   (x.en_curso ? " · en curso, " + x.dias + " de 7 días" : ""); },
+          label: c => " " + c.dataset.label + ": " + clp(c.raw),
+          footer: it => { const x = s.semanas[it[0].dataIndex];
+            return "Total: " + clp(x.total) + " · " + x.movs + " movimientos"; } } } },
+      scales: { x: { stacked: true, grid: { display: false } },
+                y: Object.assign({ stacked: true }, ejeY) } },
+  });
+
+  const cerradas = s.semanas.filter(x => !x.en_curso);
+  const nota = document.getElementById("rt-sem-nota");
+  // El domingo la semana en curso ya está completa: decir que va a medias
+  // sería falso, aunque siga siendo la barra destacada.
+  const ultima = s.semanas[s.semanas.length - 1];
+  const aviso = ultima && ultima.en_curso && ultima.dias < 7
+    ? "La última barra es la semana en curso y lleva " + ultima.dias +
+      " de 7 días, por eso está más clara. "
+    : "La última barra es la semana en curso. ";
+  if (nota) nota.innerHTML = aviso +
+    "<b>Los compromisos van aparte</b> porque caen entre el 26 y el 30: la " +
+    "semana que los contiene siempre va a ser la más alta, y eso es el " +
+    "calendario, no un descontrol. La comparación de arriba usa solo el gasto " +
+    "decidible" + (cerradas.length ? ", sobre " + cerradas.length +
+    " semanas cerradas" : "") + ".";
 }
 
 // ── Mismo tramo del mes, contra los meses anteriores ───────────────
