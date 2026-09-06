@@ -905,6 +905,12 @@ const NOM_MEDIO = { Credito:"Crédito", Debito:"Débito", Transferencia:"Transfe
 // y verlos juntos es lo que permite decidir cuál cortar.
 // El texto debe ser IDÉNTICO al CAT_USD de generar_dashboard.py.
 const CAT_USD = "Compras en dólares";
+// El pago agrupado de cuentas: una transferencia que el comprobante abre en
+// varias. El texto debe ser IDENTICO al CAT_CUENTAS de generar_dashboard.py.
+const CAT_CUENTAS = "Cuentas (Sencillito)";
+const RECAUDADORES = ["FINTOC", "ETPAY", "SENCILLITO"];
+const esRecaudador = m =>
+  RECAUDADORES.some(p => String(m.desc || "").toUpperCase().includes(p));
 const catDe = m => m.usd ? CAT_USD : (m.cat || "Otros");
 const MES_ABR = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const mesLabel = k => MES_ABR[parseInt(k.slice(5,7),10) - 1] + " " + k.slice(2,4);
@@ -2869,15 +2875,22 @@ function renderAN() {
   const mesesCerrados = mesesDeCierre(6);
   // Con las cuentas de Sencillito, igual que los otros gráficos de la pestaña:
   // sin ellas las barras sumaban 2.743.392 donde el total decía 3.495.239.
+  // El aporte del pago agrupado lo calcula el backend (`servicios.aporte`),
+  // que concilia el comprobante con lo que se transfirió. Sumar aquí las dos
+  // fuentes por separado duplicaba 751.847 desde que la transferencia empezó a
+  // contar como gasto del mes en curso: este gráfico marcaba 4.247.086 donde
+  // el titular de la misma pestaña decía 3.495.239.
   const servG = DATA.servicios || {};
+  const aporte = servG.aporte || {};
   const movsServG = [];
-  (servG.meses || []).forEach((mm, i) => {
-    const t = (servG.series || []).reduce((a, x) => a + (x.values[i] || 0), 0);
-    if (t > 0) movsServG.push({mes: mm, grupo: "Cuentas (Sencillito)", monto: t, gasto: true});
+  mesesCerrados.forEach(mm => {
+    const t = aporte[mm];
+    if (t > 0) movsServG.push({mes: mm, grupo: CAT_CUENTAS, monto: t, gasto: true});
   });
-  const gastoTodo = (o.feed || []).filter(m => m.gasto && mesesCerrados.includes(m.mes))
-    .concat(movsServG.filter(m => mesesCerrados.includes(m.mes)));
-  const gruposConServ = ["Cuentas (Sencillito)"].concat(GRUPOS);
+  const gastoTodo = (o.feed || [])
+    .filter(m => m.gasto && mesesCerrados.includes(m.mes) && !esRecaudador(m))
+    .concat(movsServG);
+  const gruposConServ = [CAT_CUENTAS].concat(GRUPOS);
   // La tabla sale de los MISMOS datasets que el gráfico: si se recalculara por
   // separado, las dos cosas podrían discrepar y ya sabemos cómo termina eso.
   const dsGrupos = apilarPorMes(gastoTodo, mesesCerrados,
