@@ -931,7 +931,11 @@ const CAT_CUENTAS = "Cuentas (Sencillito)";
 const RECAUDADORES = ["FINTOC", "ETPAY", "SENCILLITO"];
 const esRecaudador = m =>
   RECAUDADORES.some(p => String(m.desc || "").toUpperCase().includes(p));
-const catDe = m => m.usd ? CAT_USD : (m.cat || "Otros");
+// El cajon de lo que no se pudo identificar. El texto debe ser IDENTICO al
+// nombre del catalogo (categorias.py); con "Otros" a secas aparecian dos
+// cajones distintos en el mismo grafico, uno del backend y otro de aqui.
+const CAT_OTROS = "Otros gastos";
+const catDe = m => m.usd ? CAT_USD : (m.cat || CAT_OTROS);
 const MES_ABR = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const mesLabel = k => MES_ABR[parseInt(k.slice(5,7),10) - 1] + " " + k.slice(2,4);
 
@@ -969,7 +973,7 @@ function apilarPorMes(rows, meses, clave, topFijo, colores) {
 // una sola vez al cargar los datos y fija el color de cada una.
 function topCategorias(rows, n) {
   const tot = {};
-  rows.forEach(m => { tot[m.cat || "Otros"] = (tot[m.cat || "Otros"] || 0) + m.monto; });
+  rows.forEach(m => { tot[m.cat || CAT_OTROS] = (tot[m.cat || CAT_OTROS] || 0) + m.monto; });
   return Object.keys(tot).sort((a,b) => tot[b] - tot[a]).slice(0, n);
 }
 
@@ -2538,7 +2542,7 @@ function renderOF() {
   // categoría", que sí mide el gasto completo.
   const lblCatMes = meses.map(mesLabel);
   const dsCatMes = apilarPorMes(hist.filter(m => meses.indexOf(m.mes) >= 0), meses,
-                                m => m.cat || "Otros", TOP_CATS_OF);
+                                m => m.cat || CAT_OTROS, TOP_CATS_OF);
   chartApilado("chOfCatMes", lblCatMes, dsCatMes);
   pintarTablaApilada("tabla-of-catmes", dsCatMes, lblCatMes, "Categoría");
 
