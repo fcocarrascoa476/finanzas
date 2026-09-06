@@ -150,7 +150,18 @@
   .pie-vista p { margin:0 0 6px; }
   .pie-vista p:last-child { margin-bottom:0; }
 
-  .wrap-tabla { overflow-x:auto; }
+  /* El scroll se detiene en el borde de una columna, nunca a media columna.
+     En el teléfono la tabla quedaba cortada por la mitad y "$183.460" se leía
+     como "3.460" con su fondo rojo al lado: parecía un dato y era un recorte.
+     La primera columna está fija, así que el snap arranca después de ella. */
+  /* `start` + un scroll-padding del ancho de la columna fija: la columna a la
+     que salta queda justo DESPUÉS de la fija, entera. Con `end` el snap caía
+     en el borde derecho del visor y siempre dejaba una columna medio tapada
+     por la fija, que era el síntoma original. */
+  .wrap-tabla { overflow-x:auto; scroll-snap-type:x proximity;
+                scroll-padding-left:145px; }
+  .tabla-grupos tbody td:not(:first-child),
+  .tabla-grupos thead th:not(:first-child) { scroll-snap-align:start; }
   .tabla-grupos { font-size:.78rem; }
   .tabla-grupos td, .tabla-grupos th { padding:5px 9px; white-space:nowrap; }
   .tabla-grupos tbody td:first-child { font-weight:600; }
@@ -172,6 +183,15 @@
   .tabla-grupos .d-bajo-f { background:#dcfce7; color:#065f46; font-weight:700; }
   .tabla-grupos .fila-total td { border-top:2px solid var(--navy); font-weight:700;
                                  background:#f8fafc; }
+  /* En el teléfono la columna fija se comía 145 de 321 px: casi la mitad del
+     visor para el nombre. Se acorta con puntos suspensivos y el scroll-padding
+     la sigue, así queda sitio para dos columnas de datos en vez de una. */
+  @media (max-width:560px) {
+    .wrap-tabla { scroll-padding-left:112px; }
+    .tabla-grupos th:first-child, .tabla-grupos td:first-child {
+      max-width:112px; overflow:hidden; text-overflow:ellipsis; }
+    .tabla-grupos td, .tabla-grupos th { padding:5px 7px; }
+  }
   @media (max-width:520px){ .hero-frase { font-size:1.25rem; } }
 
   /* El runway manda: los otros tres KPI son contexto */
