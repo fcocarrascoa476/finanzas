@@ -2098,16 +2098,24 @@ function renderRW() {
   // Gasto histórico
   const gm = r.gastos_mes || {};
   const meses = Object.keys(gm).sort();
+  // El mes en curso va en gris y no se compara contra el ritmo: lleva unos
+  // días, así que siempre sería el más barato del gráfico. Pintarlo verde
+  // decía "vas bien" cuando lo único cierto es que el mes recién empieza.
+  // La vista de cierre ya lo separa así; esta no lo hacía.
+  const enCurso = DATA.on_time && DATA.on_time.mes_actual;
   chart("chRwGasto", {
     type: "bar",
-    data: {labels: meses.map(mesLabel),
+    data: {labels: meses.map(m => mesLabel(m) + (m === enCurso ? " *" : "")),
       datasets: [{data: meses.map(m => gm[m]),
         backgroundColor: meses.map(m =>
-          gm[m] > r.burn ? "rgba(227,73,72,.75)" : "rgba(27,175,122,.75)"),
+          m === enCurso ? "rgba(156,163,175,.65)"
+            : gm[m] > r.burn ? "rgba(227,73,72,.75)" : "rgba(27,175,122,.75)"),
         borderRadius: 4}]},
     options: {layout: {padding: {top: 16}}, responsive: true, maintainAspectRatio: false,
       plugins: {legend: {display: false},
-        tooltip: {callbacks: {label: c => " " + clp(c.raw)}}},
+        tooltip: {callbacks: {label: c => " " + clp(c.raw),
+          afterLabel: c => meses[c.dataIndex] === enCurso
+            ? "mes en curso, todavía incompleto" : null}}},
       scales: {x: {grid: {display: false}}, y: ejeY}},
   });
 
@@ -2119,10 +2127,17 @@ function renderRW() {
       ". Después de eso, no hay ingreso comprometido.");
   }
   if (r.hogar) {
+    // Del escenario ELEGIDO, no del que trae el runway por defecto. Con los
+    // dos mezclados, el titular decía 10 meses y esta nota, tres párrafos más
+    // abajo, decía que sin ese ingreso el plazo "baja" a 12: el plazo
+    // reducido era mayor que el titular, en la misma pantalla.
+    const mesesCon = vista.meses, mesesSin = vista.meses_sin_hogar;
+    const dif = (mesesCon !== null && mesesSin !== null) ? mesesCon - mesesSin : null;
     notas.push("El número de arriba <b>incluye</b> " + clp(r.hogar) + " al mes de " +
-      esc(r.hogar_nombre || "ingreso del hogar") + ". Sin ese ingreso el plazo baja a <b>" +
-      r.meses_sin_hogar + " meses</b> (" + esc(r.fecha_sin_hogar || "") + "): son " +
-      (r.meses - r.meses_sin_hogar) + " meses de diferencia.");
+      esc(r.hogar_nombre || "ingreso del hogar") +
+      (mesesSin === null || mesesSin === undefined ? "."
+        : ". Sin ese ingreso el plazo baja a <b>" + mesesSin + " meses</b>" +
+          (dif ? ": son " + dif + (dif === 1 ? " mes" : " meses") + " de diferencia." : ".")));
   }
   notas.push("De tu gasto mensual, <b>" + clp(r.comprometido) + " está decidido</b> antes de " +
     "que empiece el mes: dividendo, servicios básicos y cuotas ya tomadas. " +
