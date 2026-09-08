@@ -2476,50 +2476,27 @@ function renderOF() {
   const enCurso = mesEnCurso();
   // Esta es la vista de meses CERRADOS: el mes en curso no entra.
   const mesesTot = mesesDeCierre(6);
-  // Un mes al que le faltaron avisos NO se compara con el resto ni entra al
-  // promedio. Junio se veía verde con 3,2M cuando el banco cobró 5,5M: se leía
-  // como el mes más barato del semestre y fue el segundo más caro. Contar días
-  // con correos no sirve para detectarlo -un día sin compras es un día normal-,
-  // así que el backend lo decide contra la cartola.
-  const cob = DATA.cobertura || {};
-  const incompleto = m => (cob[m] || {}).completo === false;
-  const cerrados = mesesTot.filter(m => !incompleto(m));
+  const cerrados = mesesTot;
   const prom = cerrados.length
     ? cerrados.reduce((a, x) => a + gm[x], 0) / cerrados.length : 0;
-  const parciales = mesesTot.filter(incompleto);
   chart("chOfTotal", {
     type: "bar",
-    data: {labels: mesesTot.map(m => mesLabel(m) + (incompleto(m) ? " *" : "")),
+    data: {labels: mesesTot.map(mesLabel),
       datasets: [{data: mesesTot.map(x => gm[x]),
-        backgroundColor: mesesTot.map(x =>
-          (x >= enCurso || incompleto(x)) ? "rgba(148,163,184,.55)"
-            : (gm[x] > prom ? "rgba(227,73,72,.75)" : "rgba(27,175,122,.75)")),
+        backgroundColor: mesesTot.map(x => x >= enCurso ? "rgba(148,163,184,.55)"
+          : (gm[x] > prom ? "rgba(227,73,72,.75)" : "rgba(27,175,122,.75)")),
         borderRadius: 4}]},
     options: {layout: {padding: {top: 16}}, responsive: true, maintainAspectRatio: false,
       plugins: {legend: {display: false},
-        tooltip: {callbacks: {label: c => " " + clp(c.raw),
-          afterLabel: c => {
-            const m = mesesTot[c.dataIndex];
-            if (m >= enCurso) return "mes en curso, todavía incompleto";
-            if (!incompleto(m)) return null;
-            const f = (cob[m] || {}).falta;
-            return "faltaron avisos: el banco cobró " + clp((cob[m] || {}).banco) +
-                   (f ? " (" + clp(f) + " más)" : "");
-          }}}},
+        tooltip: {callbacks: {label: c => " " + clp(c.raw) +
+          (mesesTot[c.dataIndex] >= enCurso ? " (mes en curso)" : "")}}},
       scales: {x: {grid: {display: false}}, y: ejeY}},
   });
   const notaTot = document.getElementById("of-total-nota");
   if (notaTot) notaTot.innerHTML = cerrados.length
-    ? "Promedio de los " + cerrados.length + " meses completos: <b>" + clp(prom) +
+    ? "Promedio de los " + cerrados.length + " meses cerrados: <b>" + clp(prom) +
       "</b>. En rojo los que superaron ese promedio. Suma las compras del " +
-      "período más las cuentas agrupadas, igual que los gráficos de abajo." +
-      (parciales.length
-        ? " <b>" + parciales.map(mesLabel).join(" y ") + "</b> " +
-          (parciales.length > 1 ? "van" : "va") + " en gris y fuera del " +
-          "promedio: faltaron avisos del banco esos meses, así que " +
-          (parciales.length > 1 ? "sus cifras se quedan" : "su cifra se queda") +
-          " corta."
-        : "")
+      "período más las cuentas agrupadas, igual que los gráficos de abajo."
     : "";
   document.getElementById("kpi-comprometido").textContent = clp(k.total_comprometido);
   document.getElementById("kpi-n-cuotas").textContent     = k.n_activas + " activas + " + k.n_nuevas + " nuevas";
