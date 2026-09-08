@@ -713,6 +713,7 @@
     <div class="card-full">
       <div class="card-title">Entró y salió, mes a mes</div>
       <div class="chart-wrap"><canvas id="chBrFlujo"></canvas></div>
+      <p class="nota" id="br-flujo-nota"></p>
     </div>
 
     <div class="card-full">
@@ -1018,20 +1019,31 @@ function _mediana(a) {
 
 // Construye la tabla entera dentro de `idContenedor`. `datasets` y `labels`
 // son los MISMOS que recibe el gráfico, así las dos cosas no pueden discrepar.
-function pintarTablaApilada(idContenedor, datasets, labels, encabezado) {
+// `parciales` son los índices de columna cuyo periodo aún no está completo.
+// Esas celdas no se colorean: comparar un mes del que solo llegó un día contra
+// la mediana de meses enteros lo pinta verde siempre, y "verde" aquí significa
+// "gastaste menos de lo habitual", que es exactamente lo que no se sabe.
+function pintarTablaApilada(idContenedor, datasets, labels, encabezado,
+                            parciales) {
   const cont = document.getElementById(idContenedor);
   if (!cont) return;
   if (!datasets || !datasets.length) { cont.innerHTML = ""; return; }
+  const esParcial = i => !!(parciales && parciales.indexOf(i) >= 0);
+
+  // "Lo habitual" se calcula SIN los periodos incompletos. Un mes del que solo
+  // llegó un día arrastra la mediana hacia abajo, y esa mediana es la vara
+  // contra la que se colorean todos los demás.
+  const completas = a => (a || []).filter((_, i) => !esParcial(i));
 
   // Ordenadas por tamaño: lo que más pesa se lee primero
   const filas = datasets.map(ds => ({
     label: ds.label, data: ds.data || [], color: ds.backgroundColor,
-    tipico: _mediana(ds.data || []),
+    tipico: _mediana(completas(ds.data)),
     total: (ds.data || []).reduce((a, x) => a + x, 0),
   })).sort((a, b) => b.total - a.total);
 
   const tot = labels.map((_, i) => filas.reduce((a, f) => a + (f.data[i] || 0), 0));
-  const escala = _mediana(tot) || Math.max(...tot, 0);
+  const escala = _mediana(completas(tot)) || Math.max(...tot, 0);
   const min = Math.max(DESV_PISO, escala * DESV_FRAC);
   const minF = Math.max(DESV_PISO * 3, escala * DESV_FRAC_FUERTE);
 
@@ -1040,10 +1052,14 @@ function pintarTablaApilada(idContenedor, datasets, labels, encabezado) {
   // es un accidente, y contra ella cualquier mes con actividad sale rojo. Sin
   // este filtro la tabla de la tarjeta pintaba la mitad de sus celdas y el
   // color dejaba de significar nada.
-  const celda = (v, tipico, estable) => {
+  const celda = (v, tipico, estable, parcial) => {
     const d = v - tipico;
     const pct = tipico ? Math.abs(d) / tipico : 0;
     let cls = "";
+    if (parcial) {
+      return "<td class='num' title='Periodo incompleto: no se compara'>" +
+             (v ? clp(v) : "<span class='cero'>—</span>") + "</td>";
+    }
     if (estable) {
       if (Math.abs(d) >= minF && pct >= DESV_PCT_FUERTE) cls = d > 0 ? "d-alto-f" : "d-bajo-f";
       else if (Math.abs(d) >= min && pct >= DESV_PCT)    cls = d > 0 ? "d-alto" : "d-bajo";
@@ -1064,7 +1080,7 @@ function pintarTablaApilada(idContenedor, datasets, labels, encabezado) {
       const estable = presencia >= Math.ceil(labels.length / 2) && f.tipico > 0;
       return "<tr><td><span class='punto' style='background:" + f.color + "'></span>" +
         esc(f.label) + "</td>" +
-        f.data.map(v => celda(v || 0, f.tipico, estable)).join("") +
+        f.data.map((v, i) => celda(v || 0, f.tipico, estable, esParcial(i))).join("") +
         "<td class='num tipico'>" + (estable ? clp(f.tipico)
           : "<span class='cero' title='Aparece en " + presencia + " de " +
             labels.length + " periodos: no hay un patrón del que desviarse'>—</span>") +
@@ -1073,8 +1089,10 @@ function pintarTablaApilada(idContenedor, datasets, labels, encabezado) {
     // El total cierra la tabla y tiene que dar lo mismo que la etiqueta sobre
     // cada barra del gráfico de arriba.
     "<tr class='fila-total'><td>Total</td>" +
-    tot.map(v => "<td class='num'>" + clp(v) + "</td>").join("") +
-    "<td class='num'>" + clp(_mediana(tot)) + "</td></tr></tbody></table>";
+    tot.map((v, i) => "<td class='num'" +
+      (esParcial(i) ? " title='Periodo incompleto: no entra en el habitual'" : "") +
+      ">" + clp(v) + "</td>").join("") +
+    "<td class='num'>" + clp(_mediana(completas(tot))) + "</td></tr></tbody></table>";
 }
 
 // ── El pie de cada vista ───────────────────────────────────────────
@@ -3131,28 +3149,69 @@ function renderBR() {
                : "La cuenta quedó <b>" + clp(Math.abs(neto)) + "</b> abajo") +
     " en " + b.n_movs[i] + " movimientos.";
 
+  // Un mes cuya cartola aún no llegó completa NO se dibuja como los demás.
+  //
+  // Esta vista es fiel al banco -esa es su gracia: cuadra línea por línea-,
+  // pero la cartola del mes en curso llega cuando el banco la emite, no al
+  // día. En septiembre traía UN día ($306.373) al lado de un agosto entero
+  // ($4.006.692): parecía un derrumbe del gasto y era una cartola que todavía
+  // no llegaba. El resto del mes sí está en "Mes en curso", que lee los
+  // correos de cada compra.
+  const parcial = m => (b.cubierto || {})[m] === false;
+  const dia = m => (b.ultimo_dia || {})[m];
+  const apagado = (color, m) => parcial(m) ? "rgba(148,163,184,.45)" : color;
   chart("chBrFlujo", {
     type: "bar",
-    data: { labels: b.labels, datasets: [
-      { label: "Entró", data: b.tot_entradas, backgroundColor: "rgba(16,185,129,.75)", borderRadius: 4 },
-      { label: "Salió", data: b.tot_salidas, backgroundColor: "rgba(239,68,68,.72)", borderRadius: 4 }] },
+    data: { labels: b.labels.map((l, j) => l + (parcial(b.meses[j]) ? " *" : "")),
+      datasets: [
+      { label: "Entró", data: b.tot_entradas, borderRadius: 4,
+        backgroundColor: b.meses.map(m => apagado("rgba(16,185,129,.75)", m)) },
+      { label: "Salió", data: b.tot_salidas, borderRadius: 4,
+        backgroundColor: b.meses.map(m => apagado("rgba(239,68,68,.72)", m)) }] },
     options: { responsive: true, maintainAspectRatio: false,
       layout: { padding: { top: 16 } },
       interaction: { mode: "index", intersect: false },
       plugins: { legend: { position: "top" },
         tooltip: { callbacks: {
           label: c => " " + c.dataset.label + ": " + clp(c.raw),
-          footer: it => { const j = it[0].dataIndex;
+          footer: it => { const j = it[0].dataIndex, m = b.meses[j];
+            if (parcial(m)) {
+              const d = dia(m);
+              return "La cartola de este mes llega " +
+                     (d ? "solo hasta el día " + d : "incompleta") +
+                     ".\nLo que va del mes está en “Mes en curso”.";
+            }
             return (b.neto[j] >= 0 ? "Quedó arriba: " : "Quedó abajo: ") +
                    clp(Math.abs(b.neto[j])); } } } },
       scales: { x: { grid: { display: false } }, y: ejeY } },
   });
 
+  // La nota bajo el gráfico, para quien no pasa el cursor.
+  (function () {
+    const nota = document.getElementById("br-flujo-nota");
+    if (!nota) return;
+    const p = (b.meses || []).filter(parcial);
+    if (!p.length) { nota.textContent = ""; return; }
+    const d = dia(p[p.length - 1]);
+    nota.innerHTML = "<b>" + p.map(m => mesLabel(m)).join(" y ") + "</b> " +
+      (p.length > 1 ? "van" : "va") + " en gris: el banco todavía no emite " +
+      (p.length > 1 ? "esas cartolas" : "esa cartola") +
+      (d ? ", llega hasta el día " + d : "") +
+      ". Lo que va del mes está en <b>Mes en curso</b>, que lee los correos " +
+      "de cada compra.";
+  })();
+
   const ds = (filas, base) => filas.map((f, k) => ({
     label: f.cat, data: f.values, backgroundColor: PALETA[k % PALETA.length],
   }));
-  pintarTablaApilada("tabla-br-entradas", ds(b.entradas), b.labels, "Origen");
-  pintarTablaApilada("tabla-br-salidas", ds(b.salidas), b.labels, "Destino");
+  // Las columnas cuya cartola no llegó completa: ni se colorean ni entran en
+  // el "habitual" de cada fila.
+  const colsParciales = (b.meses || []).map((m, j) => parcial(m) ? j : -1)
+                                       .filter(j => j >= 0);
+  pintarTablaApilada("tabla-br-entradas", ds(b.entradas), b.labels, "Origen",
+                     colsParciales);
+  pintarTablaApilada("tabla-br-salidas", ds(b.salidas), b.labels, "Destino",
+                     colsParciales);
 }
 
 // ── Tabs ───────────────────────────────────────────────────────────
