@@ -324,6 +324,12 @@
     <button class="tab" id="tab-br">Todo el movimiento</button>
   </div>
 
+  <!-- Fuera de las pestañas y antes de todo: si el sistema dejó de ver, eso
+       vale para las cuatro vistas y hay que leerlo antes que cualquier cifra. -->
+  <div id="aviso-salud" style="display:none;margin:12px auto 0;max-width:1180px;
+       background:#fdecea;border:1px solid #e34948;border-left-width:5px;
+       border-radius:8px;padding:12px 16px;color:#7f1d1d;line-height:1.5"></div>
+
   <!-- ===================== VISTA 1: MES EN CURSO ===================== -->
   <main id="vista-rt">
     <div class="hero" id="rt-hero">
@@ -1280,6 +1286,23 @@ function mostrar(datos) {
                        + "border-radius:10px;margin-left:8px;font-weight:600";
       el.appendChild(av);
     }
+  })();
+
+  // Si el sistema está ciego, decirlo con nombre y apellido.
+  //
+  // "Sin movimientos nuevos hace 2 días" es un SÍNTOMA, y uno que se explica
+  // solo con un fin de semana tranquilo. Cuando Google dejó de aceptar la clave
+  // el tablero mostró cifras congeladas durante dos días sin que nada dijera
+  // por qué. Un número viejo que se ve actual es peor que ningún número.
+  (function () {
+    const s = DATA.salud || {};
+    const caja = document.getElementById("aviso-salud");
+    if (!caja || s.gmail_ok !== false) return;
+    caja.innerHTML =
+      "<b>⚠ " + esc(s.titulo || "El banco no está entrando") + "</b><br>" +
+      esc(s.detalle || "") +
+      (s.que_hacer ? "<br><b>Qué hacer:</b> " + esc(s.que_hacer) : "");
+    caja.style.display = "block";
   })();
   document.getElementById("titular").textContent = DATA.titular ? DATA.titular + " — " : "";
   // El color de cada categoria se fija aqui, sobre el total del periodo y sin
