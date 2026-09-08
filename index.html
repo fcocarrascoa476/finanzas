@@ -2365,18 +2365,30 @@ function pintarComparativo(o) {
   }));
   chartApilado("chRtComp", c.labels, datasets);
   // Aquí todos los meses vienen recortados al mismo día, así que la mediana de
-  // cada fila y el mes en curso son comparables entre sí.
-  pintarTablaApilada("tabla-rt-comp", datasets, c.labels, "Categoría");
+  // cada fila y el mes en curso son comparables entre sí. Salvo los meses a
+  // los que les faltaron avisos: esos no se comparan con nada.
+  const cobC = DATA.cobertura || {};
+  const malos = (c.meses || []).map((m, i) =>
+    (cobC[m] || {}).completo === false ? i : -1).filter(i => i >= 0);
+  pintarTablaApilada("tabla-rt-comp", datasets, c.labels, "Categoría", malos);
 
-  // El titular: cómo va el mes en curso contra el promedio del mismo tramo
+  // El titular: cómo va el mes en curso contra el promedio del mismo tramo.
+  //
+  // Sin los meses incompletos. Junio recortado al día 8 marca $1.448.079 con
+  // dos días de avisos perdidos justo en ese tramo, y metido en la media subía
+  // la referencia de $779.560 a $913.264: el mes en curso parecía mucho mejor
+  // de lo que es. Mismo criterio que el resto del tablero.
   const n = c.totales.length, act = c.totales[n - 1];
-  const previos = c.totales.slice(0, n - 1);
-  const prom = previos.reduce((a, b) => a + b, 0) / previos.length;
+  const previos = c.totales.slice(0, n - 1)
+    .filter((_, i) => malos.indexOf(i) < 0);
+  const base = previos.length ? previos : c.totales.slice(0, n - 1);
+  const prom = base.reduce((a, b) => a + b, 0) / base.length;
   const dif = act - prom, pct = prom ? Math.round(100 * dif / prom) : 0;
   const el = document.getElementById("rt-comp-resumen");
   el.textContent = "A esta altura del mes llevas " + clp(act) + ", " +
     Math.abs(pct) + "% " + (dif >= 0 ? "más" : "menos") +
-    " que el promedio del mismo tramo (" + clp(Math.round(prom)) + ").";
+    " que el promedio del mismo tramo (" + clp(Math.round(prom)) + ")" +
+    (malos.length ? ", sin contar los meses a los que les faltaron avisos." : ".");
   el.style.color = dif > 0 ? "var(--red)" : "var(--green)";
 }
 
@@ -2525,8 +2537,11 @@ function renderOF() {
   const cob = DATA.cobertura || {};
   const incompleto = m => (cob[m] || {}).completo === false;
   const cerrados = mesesTot.filter(m => !incompleto(m));
-  const prom = cerrados.length
-    ? cerrados.reduce((a, x) => a + gm[x], 0) / cerrados.length : 0;
+  // El promedio lo calcula el BACKEND, con el mismo criterio y una sola vez.
+  // Recalculándolo aquí salían dos cifras para lo mismo en la misma pantalla:
+  // el titular decía $4.073.198 y este gráfico $4.008.408.
+  const prom = (DATA.cierre && DATA.cierre.promedio) ||
+    (cerrados.length ? cerrados.reduce((a, x) => a + gm[x], 0) / cerrados.length : 0);
   const parciales = mesesTot.filter(incompleto);
   chart("chOfTotal", {
     type: "bar",
@@ -2574,9 +2589,20 @@ function renderOF() {
   document.getElementById("kpi-ingresos").textContent     = clp(k.ingresos_cc);
   document.getElementById("kpi-gastos").textContent       = clp(k.egresos_cc);
   document.getElementById("kpi-saldo-proy").textContent   = clpN(k.saldo_proyectado);
+  // Sin proyección, el subtítulo tiene que decir por qué. "Estimado por
+  // tendencia" sobre un "Sin datos" deja al usuario buscando un número que no
+  // existe. Falta cuando la cartola del mes trae pocos días: no hay ritmo del
+  // que extrapolar, y antes se extrapolaba igual —de UN día— dando −3.233.533.
+  const subProy = document.querySelector("#card-proy .kpi-sub");
+  if (subProy) subProy.textContent = k.saldo_proyectado == null
+    ? "la cartola del mes trae pocos días todavía"
+    : "estimado por tendencia";
+  const cardProy = document.getElementById("card-proy");
   if (k.saldo_proyectado != null && k.saldo_inicial != null)
-    document.getElementById("card-proy").style.borderTopColor =
+    cardProy.style.borderTopColor =
       k.saldo_proyectado >= k.saldo_inicial ? "var(--green)" : "var(--red)";
+  else
+    cardProy.style.borderTopColor = "var(--linea)";
 
   const tipo = filtros["of-tipo"], tar = filtros["of-tarjeta"], mes = filtros["of-mes"];
   const meses = (ex.meses || []).map(m => m.v).sort();
