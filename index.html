@@ -3148,6 +3148,25 @@ function renderAN() {
     ico + "</div><div><h4>" + tit + "</h4><p>" + txt + "</p></div></div>").join("");
 }
 
+// No todo lo que entra es un ingreso.
+//
+// El total de abonos cuadra con el banco y por eso se muestra tal cual, pero
+// dentro puede venir línea de sobregiro -que es deuda- o plata propia que
+// vuelve desde otra cuenta. En septiembre los $166.000 que entraron eran
+// íntegramente un traspaso entre cuentas del mismo dueño: la cuenta no
+// recibió un peso nuevo. Sin decirlo, ese número se lee como ingreso.
+function soloDeBolsillo(b, i) {
+  const real = (b.ingreso_real || [])[i];
+  if (real == null) return "";
+  const otro = (b.tot_entradas[i] || 0) - real;
+  if (otro <= 0) return "";
+  return real > 0
+    ? " De lo que entró, <b>" + clp(real) + "</b> es ingreso: el resto (" +
+      clp(otro) + ") es plata que solo cambió de bolsillo."
+    : " Nada de eso es ingreso: son <b>" + clp(otro) + "</b> que solo " +
+      "cambiaron de bolsillo (traspasos propios o línea de sobregiro).";
+}
+
 // ── Vista 4: todo el movimiento, sin filtros ───────────────────────
 function renderBR() {
   const b = DATA.bruto || {};
@@ -3173,7 +3192,7 @@ function renderBR() {
   document.getElementById("br-hero-accion").innerHTML =
     (neto >= 0 ? "La cuenta quedó <b>" + clp(neto) + "</b> arriba"
                : "La cuenta quedó <b>" + clp(Math.abs(neto)) + "</b> abajo") +
-    " en " + b.n_movs[i] + " movimientos.";
+    " en " + b.n_movs[i] + " movimientos." + soloDeBolsillo(b, i);
 
   // Un mes cuya cartola aún no llegó completa NO se dibuja como los demás.
   //
@@ -3234,7 +3253,14 @@ function renderBR() {
   // el "habitual" de cada fila.
   const colsParciales = (b.meses || []).map((m, j) => parcial(m) ? j : -1)
                                        .filter(j => j >= 0);
-  pintarTablaApilada("tabla-br-entradas", ds(b.entradas), b.labels, "Origen",
+  // Las filas que NO son ingreso se dicen en la propia fila: el sobregiro y
+  // los traspasos propios sumaban al total sin que nada los distinguiera de
+  // un sueldo.
+  const dsEnt = ds(b.entradas).map((x, k) => (
+    b.entradas[k].ingreso === false
+      ? Object.assign({}, x, { label: x.label + " · no es ingreso" })
+      : x));
+  pintarTablaApilada("tabla-br-entradas", dsEnt, b.labels, "Origen",
                      colsParciales);
   pintarTablaApilada("tabla-br-salidas", ds(b.salidas), b.labels, "Destino",
                      colsParciales);
