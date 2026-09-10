@@ -721,6 +721,7 @@
         <span style="color:var(--muted);font-weight:400;text-transform:none">· por categoría</span></div>
       <p class="an-nota nota-tabla"></p>
       <div class="wrap-tabla" id="tabla-br-entradas"></div>
+      <p class="nota" id="br-entradas-nota"></p>
     </div>
 
     <div class="card-full">
@@ -3262,6 +3263,29 @@ function renderBR() {
       : x));
   pintarTablaApilada("tabla-br-entradas", dsEnt, b.labels, "Origen",
                      colsParciales);
+
+  // Un mes casi vacío aquí no significa que no entró nada.
+  //
+  // Lo que SALE llega por correo el mismo día: el banco avisa cada compra. Lo
+  // que ENTRA no —BCI no manda aviso de un depósito ni de una transferencia
+  // recibida—, así que la única fuente de ingresos es la cartola, y la cartola
+  // la emite el banco a fin de mes. En septiembre la tabla mostraba $166.000
+  // contra un depósito, un aporte y un abono que sí habían ocurrido: el
+  // asterisco gris del gráfico de arriba no alcanzaba para explicarlo.
+  (function () {
+    const nota = document.getElementById("br-entradas-nota");
+    if (!nota) return;
+    const ult = b.meses[b.meses.length - 1];
+    if (!parcial(ult)) { nota.textContent = ""; return; }
+    const d = dia(ult);
+    nota.innerHTML =
+      "<b>Los ingresos solo se ven cuando llega la cartola.</b> La de " +
+      mesLabel(ult) + " llega " + (d ? "hasta el día " + d : "incompleta") +
+      ": lo que entró después —un depósito, un sueldo, una transferencia " +
+      "recibida— todavía no está en ninguna parte. El banco avisa por correo " +
+      "de cada gasto, pero no de lo que entra. Para completarlo, baja la " +
+      "cartola actualizada del portal y procésala.";
+  })();
   pintarTablaApilada("tabla-br-salidas", ds(b.salidas), b.labels, "Destino",
                      colsParciales);
 }
