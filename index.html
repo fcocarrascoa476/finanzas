@@ -1827,7 +1827,7 @@ function pintarCalendario(r) {
     const dia = Object.values(o.fechas)[0];
     const esMejor = igual(o.fechas, mejor.fechas) && o.dia_rescate === mejor.dia_rescate;
     filas += "<tr" + (esMejor ? " style='font-weight:700'" : "") + ">" +
-      "<td>el " + dia + (esMejor ? " &nbsp;\u2190 la m\u00e1s holgada" : "") + "</td>" +
+      "<td>el " + dia + (esMejor ? " &nbsp;\u2190 recomendada" : "") + "</td>" +
       "<td>el " + o.dia_rescate + (o.llega ? " (" + o.llega + ")" : "") + "</td>" +
       "<td class='num'>" + clp(o.rescate) + "</td>" +
       "<td class='num'>" + o.dias_bajo_colchon + "</td>" +
