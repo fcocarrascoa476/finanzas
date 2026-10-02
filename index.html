@@ -804,12 +804,16 @@
           <tbody id="rw-alerta-detalle"></tbody>
         </table>
       </div>
-      <p class="an-nota">Evalué mover los pagos a después de que entra la plata
-        y <b>no sirve</b>: con el mes en déficit, el saldo final es el mismo se
-        pague el 8 o el 26 &mdash;y adelantarlos empeora, porque el día crítico
-        se corre del 12 al 8. Lo que sí puedes decidir es cada cuánto rescatar.</p>
+      <p class="an-nota">Adelantar los pagos a cuando entra la plata <b>no sirve</b>: con el mes en déficit el saldo final es el mismo se pague el 8 o el 26, y adelantarlos empeora, porque el día crítico se corre del 12 al 8. Lo que sí cambia es <b>cuándo pagas la tarjeta</b> &mdash;tienes hasta el vencimiento del PDF, no el 27&mdash; y cada cuánto rescatas. Las dos cosas están abajo.</p>
       <div id="rw-rescate"></div>
       <p class="an-nota" id="rw-rescate-nota" style="margin-top:12px"></p>
+    </div>
+
+    <div class="card-full" id="rw-card-calendario" style="display:none">
+      <div class="card-title">Qu&eacute; d&iacute;a pagar y qu&eacute; d&iacute;a rescatar</div>
+      <p class="an-nota" id="rw-cal-intro"></p>
+      <div id="rw-calendario"></div>
+      <p class="an-nota" id="rw-cal-nota" style="margin-top:12px"></p>
     </div>
 
     <div class="card-full" id="rw-card-seguimiento" style="display:none">
@@ -1799,6 +1803,53 @@ function pintarSeguimiento(r) {
 // Es la decisión que reemplaza a "reordenar los pagos", que se analizó y no
 // aporta nada mientras el mes cierre en déficit. Aquí el intercambio sí es
 // real y medible: menos trámites contra menos rentabilidad.
+// El calendario de fechas: la unica fecha del mes que se puede elegir es la de
+// la tarjeta -el PDF dice hasta cuando- y elegirla bien no crea plata, pero
+// cambia los dias que la cuenta pasa en rojo y cuanto hay que rescatar de una
+// vez. La fila marcada es la que menos dias deja sin colchon.
+function pintarCalendario(r) {
+  const c = r.calendario;
+  const card = document.getElementById("rw-card-calendario");
+  if (!card) return;
+  if (!c || !c.opciones || !c.opciones.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const nombre = (c.movibles && c.movibles[0]) || "el pago";
+  document.getElementById("rw-cal-intro").innerHTML =
+    "Cada fila es una fecha posible para <b>" + nombre + "</b>, con el rescate " +
+    "mensual m\u00e1s bajo que evita el sobregiro en los pr\u00f3ximos " +
+    (c.dias || 90) + " d\u00edas. " + (c.advertencia || "");
+
+  const mejor = c.mejor || {};
+  const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  let filas = "";
+  c.opciones.forEach(function (o) {
+    const dia = Object.values(o.fechas)[0];
+    const esMejor = igual(o.fechas, mejor.fechas) && o.dia_rescate === mejor.dia_rescate;
+    filas += "<tr" + (esMejor ? " style='font-weight:700'" : "") + ">" +
+      "<td>el " + dia + (esMejor ? " &nbsp;\u2190 recomendada" : "") + "</td>" +
+      "<td>el " + o.dia_rescate + (o.llega ? " (" + o.llega + ")" : "") + "</td>" +
+      "<td class='num'>" + clp(o.rescate) + "</td>" +
+      "<td class='num'>" + o.dias_bajo_colchon + "</td>" +
+      "<td class='num'>" + clp(o.sobra) + "</td></tr>";
+  });
+  document.getElementById("rw-calendario").innerHTML =
+    "<table><thead><tr><th>Pagas la tarjeta</th><th>Rescatas</th>" +
+    "<th class='num'>Cu\u00e1nto al mes</th><th class='num'>D\u00edas sin colch\u00f3n</th>" +
+    "<th class='num'>Sobra al final</th></tr></thead><tbody>" + filas + "</tbody></table>";
+
+  let nota = "";
+  if (mejor.pedir_antes_de) {
+    nota = "Un rescate tarda tres d\u00edas h\u00e1biles: para que est\u00e9 el " +
+      (mejor.llega || "d\u00eda " + mejor.dia_rescate) + " hay que pedirlo <b>a m\u00e1s tardar el " +
+      mejor.pedir_antes_de + "</b>.";
+    if (mejor.ya_no_alcanza) {
+      nota += " Esa fecha <b>ya pas\u00f3</b>: p\u00eddelo hoy y cuenta con que llegue tarde.";
+    }
+  }
+  document.getElementById("rw-cal-nota").innerHTML = nota;
+}
+
 function pintarRescate(r) {
   const x = r.rescate;
   const card = document.getElementById("rw-card-rescate");
@@ -2089,6 +2140,7 @@ function renderRW() {
 
   pintarSeguimiento(r);
   pintarRescate(r);
+  pintarCalendario(r);
   pintarAnomalias(r);
   pintarOptimizar(r);
 
