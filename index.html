@@ -2611,6 +2611,14 @@ function renderOF() {
             const m = mesesTot[c.dataIndex];
             if (m >= enCurso) return "mes en curso, todavía incompleto";
             if (!incompleto(m)) return null;
+            // Si el mes se midio contra las compras de d\u00e9bito -lo \u00fanico
+            // que puede tener aviso-, decir eso y no el total de la cuenta, que
+            // incluye transferencias y cuotas que nunca traen aviso.
+            const cm = cob[m] || {};
+            if (cm.cubre !== undefined && cm.cubre !== null)
+              return "faltaron avisos: solo el " + Math.round(cm.cubre * 100) +
+                     "% de tus compras con d\u00e9bito tiene aviso (" +
+                     clp(cm.compras_sin_aviso) + " sin aviso)";
             const f = (cob[m] || {}).falta;
             return "faltaron avisos: el banco cobró " + clp((cob[m] || {}).banco) +
                    (f ? " (" + clp(f) + " más)" : "");
