@@ -1775,7 +1775,7 @@ function pintarSeguimiento(r) {
   const card = document.getElementById("rw-card-seguimiento");
   if (!card) return;
   const hay = sg && ((sg.pendientes || []).length || (sg.vencidas || []).length ||
-                     sg.cumplidas);
+                     (sg.parciales || []).length || sg.cumplidas);
   if (!hay) { card.style.display = "none"; return; }
   card.style.display = "";
 
@@ -1787,6 +1787,12 @@ function pintarSeguimiento(r) {
   for (const x of (sg.vencidas || []))
     html += fila("Quedó sin hacer: rescatar <b>" + clp(x.monto) + "</b> antes del " +
                  esc(x.antes_de) + ". No aparece en la cuenta.", "mal", "var(--red)");
+  // Rescataste, pero menos de lo pedido: no es "quedo sin hacer".
+  for (const x of (sg.parciales || []))
+    html += fila("Rescataste <b>" + clp(x.monto_real) + "</b>" +
+                 (x.fecha_real ? " el " + esc(x.fecha_real) : "") + " de los <b>" +
+                 clp(x.monto) + "</b> recomendados antes del " + esc(x.antes_de) +
+                 ".", "pend", "var(--amber)");
   for (const x of (sg.pendientes || []))
     html += fila("Pendiente: rescatar <b>" + clp(x.monto) + "</b> antes del " +
                  esc(x.antes_de) + ".", "pend", "var(--amber)");
@@ -1975,13 +1981,32 @@ function renderRW() {
   pintarEscenarios(r);
   const eSel = (r.gasto_escenarios || [])[ESC_SEL] || null;
   const mes = (eSel && eSel.alarma) ? eSel.alarma : (r.mes || {});
+  // UNA sola recomendacion, con las dos cifras que la componen. Antes salian
+  // varias que no se parecian: "rescata 450.000 hoy", "3.700.000 antes del
+  // 08/10" -una fecha ya pasada- y lo que uno calcula a mano para el mes. Son
+  // respuestas a preguntas distintas y se leian como un tablero que no sabe
+  // lo que dice.
+  const estimado = r.saldo_origen === "estimado"
+    ? " (estimado con los avisos del banco desde el " + r.saldo_base_al + ")" : "";
+  let msg = "";
+  if (mes.alarma) {
+    msg = "Con " + clp(r.saldo_cuenta) + " en la cuenta" + estimado +
+      ", el saldo toca fondo en " + clp(mes.minimo.saldo) + " el " +
+      mes.minimo.fecha + ". ";
+    if (mes.necesario_mes)
+      msg += "Para no quedar en rojo lo que queda del mes necesitas " +
+        clp(mes.necesario_mes) + ". ";
+    msg += "Para llegar al " + mes.minimo.fecha + " sin bajar de " +
+      clp(mes.colchon || 400000) + " rescata " + clp(mes.rescatar) +
+      " de la inversión. ";
+    msg += mes.tarde
+      ? "Pídelo hoy: llega el " + mes.llegaria_el + "."
+      : "Pídelo antes del " + mes.pedir_antes_de + " para que llegue a tiempo " +
+        "(el saldo baja del mínimo el " + mes.dia_critico + ").";
+  }
   const al = mes.alarma ? {
     nivel: mes.nivel,
-    mensaje: "Con " + clp(r.saldo_cuenta) + " en la cuenta, el mes cierra en " +
-      clp(mes.minimo.saldo) + " el " + mes.minimo.fecha + ". Rescata " +
-      clp(mes.rescatar) + " de la inversión, pidiéndolo antes del " +
-      mes.pedir_antes_de + " para que alcance a llegar (el saldo baja del mínimo " +
-      "el " + mes.dia_critico + ").",
+    mensaje: msg,
     detalle: (r.alerta || {}).detalle,
   } : (r.alerta || {});
   const box = document.getElementById("rw-alerta");
