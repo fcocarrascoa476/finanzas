@@ -1986,8 +1986,12 @@ function renderRW() {
   // 08/10" -una fecha ya pasada- y lo que uno calcula a mano para el mes. Son
   // respuestas a preguntas distintas y se leian como un tablero que no sabe
   // lo que dice.
-  const estimado = r.saldo_origen === "estimado"
-    ? " (estimado con los avisos del banco desde el " + r.saldo_base_al + ")" : "";
+  const estimado = (r.saldo_origen === "estimado"
+    ? " (estimado con los avisos del banco desde el " + r.saldo_base_al + ")" : "") +
+    // El saldo ya viene neto de la linea de sobregiro: se dice, porque el
+    // portal muestra el contable y las dos cifras no van a coincidir.
+    (r.linea_sobregiro > 0
+      ? ", ya descontados " + clp(r.linea_sobregiro) + " que debes a la línea de sobregiro" : "");
   let msg = "";
   if (mes.alarma) {
     msg = "Con " + clp(r.saldo_cuenta) + " en la cuenta" + estimado +
@@ -2054,9 +2058,23 @@ function renderRW() {
   document.getElementById("rw-hero-frase").innerHTML =
     "Te alcanza para <b>" + mesesTxt + "</b>" +
     (vista.fecha ? ", hasta " + esc(vista.fecha) : "") + ".";
+  // Las mismas dos cifras que la caja de alerta, con su horizonte a la vista.
+  // Decia "Este mes necesitas rescatar" con `rescatar`, que cubre 35 dias: el
+  // 22-10-2026 mostraba 5.200.000 "este mes" cuando el mes pedia 3.400.000 y
+  // el resto era noviembre hasta el 26. Y "pidiendolo antes del 22/10" el mismo
+  // 22, cuando ya era tarde: ahi lo util es cuando llega si se pide hoy.
   document.getElementById("rw-hero-accion").innerHTML = mes.alarma
-    ? "Este mes necesitas rescatar <b>" + clp(mes.rescatar) + "</b> de la " +
-      "inversión, pidiéndolo antes del <b>" + esc(mes.pedir_antes_de || "") + "</b>."
+    ? (mes.necesario_mes && mes.necesario_mes < mes.rescatar
+        ? "Para cerrar el mes sin quedar en rojo necesitas rescatar <b>" +
+          clp(mes.necesario_mes) + "</b>; para llegar al <b>" +
+          esc((mes.minimo || {}).fecha || "") + "</b> con colchón, <b>" +
+          clp(mes.rescatar) + "</b>. "
+        : "Necesitas rescatar <b>" + clp(mes.rescatar) + "</b> de la inversión" +
+          ((mes.minimo || {}).fecha ? " para llegar al <b>" + esc(mes.minimo.fecha) + "</b> con colchón" : "") +
+          ". ") +
+      (mes.tarde
+        ? "Pídelo hoy: llega el <b>" + esc(mes.llegaria_el || "") + "</b>."
+        : "Pídelo antes del <b>" + esc(mes.pedir_antes_de || "") + "</b>.")
     : "Este mes no necesitas mover plata de la inversión.";
 
   // El número principal: el escenario prudente, sin contar la ayuda de terceros
